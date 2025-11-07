@@ -1,0 +1,25 @@
+[build-system]
+build-backend = "mesonpy"
+requires = ["meson-python"]
+
+[project]
+name = "wudao-dict"
+version = "2.1.0"
+description = "有道词典的命令行版本，支持英汉互查和在线查询。"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "bs4>=0.0.2",
+    "lxml>=6.0.2",
+    "platformdirs>=4.3.6",
+    "rich>=14.2.0",
+    "zstandard>=0.23.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.4",
+]
+
+[project.scripts]
+wd = "wudao_dict.cli:main"
