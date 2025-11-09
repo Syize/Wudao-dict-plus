@@ -63,20 +63,20 @@ class WudaoCLI:
         if args.word:
             word = ' '.join(args.word)
             self.query(word)
-        elif not any([args.version, args.kill, args.interactive]):
-            # 如果没有提供单词且没有其他命令，显示帮助
-            self.show_help()
+        # elif not any([args.version, args.kill, args.interactive]):
+        #     # 如果没有提供单词且没有其他命令，显示帮助
+        #     self.show_help()
     
     def show_version(self):
         """显示版本信息"""
         print('Wudao-dict, Version \033[31m2.1\033[0m, Nov 27, 2019')
         
-    def show_help(self):
-        """显示帮助信息"""
-        print('Usage: wd [OPTION]... [WORD]')
-        print('Youdao is wudao, a powerful dict.')
-        print('生词本文件: ' + os.path.abspath('./usr/') + '/notebook.txt')
-        print('查询次数: ' + os.path.abspath('./usr/') + '/usr_word.json')
+    # def show_help(self):
+    #     """显示帮助信息"""
+    #     print('Usage: wd [OPTION]... [WORD]')
+    #     print('Youdao is wudao, a powerful dict.')
+        # print('生词本文件: ' + os.path.abspath('./usr/') + '/notebook.txt')
+        # print('查询次数: ' + os.path.abspath('./usr/') + '/usr_word.json')
         
     def query(self, word, notename='notebook'):
         """
@@ -111,7 +111,7 @@ class WudaoCLI:
         """交互模式"""
         print('进入交互模式。直接键入词汇查询单词的含义。下面提供了一些设置：')
         print(':help                    本帮助')
-        print(':note [filename]         设置生词本的名称')
+        # print(':note [filename]         设置生词本的名称')
         print(':long                    切换完整模式(:short切换回去)')
         
         conf = {'save': True, 'short': True, 'notename': 'notebook'}
@@ -133,7 +133,7 @@ class WudaoCLI:
                 elif inp == ':help':
                     print(':help                    本帮助')
                     print(':quit                    退出')
-                    print(':note [filename]         设置生词本的名称')
+                    # print(':note [filename]         设置生词本的名称')
                     print(':long                    切换完整模式(:short切换回去)')
                 elif inp.startswith(':note'):
                     vec = inp.split()
@@ -192,15 +192,15 @@ def create_parser():
         help='进入交互模式'
     )
     
-    parser.add_argument(
-        '-n', '--note',
-        nargs='?',
-        const=True,
-        type=lambda x: x.lower() not in ('false', '0', 'no'),
-        metavar='BOOLEAN',
-        dest='save',
-        help='保存/不保存到生词本 (默认: 开启保存)'
-    )
+    # parser.add_argument(
+    #     '-n', '--note',
+    #     nargs='?',
+    #     const=True,
+    #     type=lambda x: x.lower() not in ('false', '0', 'no'),
+    #     metavar='BOOLEAN',
+    #     dest='save',
+    #     help='保存/不保存到生词本 (默认: 开启保存)'
+    # )
     
     parser.add_argument(
         '-v', '--version',

@@ -3,11 +3,13 @@ build-backend = "mesonpy"
 requires = ["meson-python"]
 
 [project]
-name = "wudao-dict"
-version = "2.1.0"
-description = "有道词典的命令行版本，支持英汉互查和在线查询。"
+name = "wudao-dict-plus"
+version = "3.0.0"
+description = "无道词典增强版。对原有的无道词典的功能进行了修复和增强。"
 readme = "README.md"
 requires-python = ">=3.8"
+maintainers = [{ name = "Syize", email = "syizeliu@gmail.com" }]
+keywords = ["dictionary", "command-line"]
 dependencies = [
     "bs4>=0.0.2",
     "lxml>=6.0.2",
@@ -16,10 +18,17 @@ dependencies = [
     "zstandard>=0.23.0",
 ]
 
+[project.urls]
+homepage = "https://github.com/Syize/Wudao-dict-plus"
+repository = "https://github.com/Syize/Wudao-dict-plus"
+documentation = "https://github.com/Syize/Wudao-dict-plus"
+"Bug Tracker" = "https://github.com/Syize/Wudao-dict-plus/issues"
+
+[tool.poetry]
+readme = "README.md"
+
 [dependency-groups]
-dev = [
-    "ruff>=0.14.4",
-]
+dev = ["ruff>=0.14.4"]
 
 [project.scripts]
 wd = "wudao_dict.cli:main"
