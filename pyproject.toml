@@ -12,6 +12,7 @@ maintainers = [{ name = "Syize", email = "syizeliu@gmail.com" }]
 keywords = ["dictionary", "command-line"]
 dependencies = [
     "bs4>=0.0.2",
+    "httpx>=0.28.1",
     "lxml>=6.0.2",
     "platformdirs>=4.3.6",
     "rich>=14.2.0",
