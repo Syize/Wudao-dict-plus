@@ -87,6 +87,7 @@ celerybeat-schedule
 
 # virtualenv
 venv/
+.venv/
 ENV/
 
 # Spyder project settings
@@ -109,3 +110,4 @@ uv.lock
 
 main.py
 *.db
+test.py

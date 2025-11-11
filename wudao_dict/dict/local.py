@@ -16,6 +16,10 @@ wudao_dict.dict.local
     insert_word_zh
 """
 
+# TODO:
+#   1. 更新插入新词语的函数。
+#   2. 对词典数据库检查哈希值防止数据库损坏。这个检查应当在试图使用词典数据库但发生错误后的下一次试图使用时检查。
+
 import sqlite3
 from json import loads, dumps
 from os.path import exists
@@ -102,26 +106,27 @@ def query_word_en(db_cur: sqlite3.Cursor, word: str) -> str:
     :rtype: str
     """
     db_cmd = """
-        SELECT pronunciation_usa, pronunciation_uk, pronunciation_other,
-               paraphrase, rank, pattern, sentence
+        SELECT pronunciation, paraphrase, rank, pattern, sentence
         FROM en WHERE word=?
     """
     row = db_cur.execute(db_cmd, (word, )).fetchone()
     
     if not row:
         return ""
+
+    pronunciation = loads(row[0])
     
     result: ENWord = {
         'word': word,
         'pronunciation': {
-            'usa': row[0],
-            'uk': row[1],
-            'other': row[2],
+            'usa': pronunciation["usa"],
+            'uk': pronunciation["uk"],
+            'other': pronunciation["other"],
         },
-        'paraphrase': loads(decompress(row[3]).decode('utf8')),
-        'rank': row[4],
-        'pattern': row[5],
-        'sentence': loads(decompress(row[6]).decode('utf8'))
+        'paraphrase': loads(row[1]),
+        'rank': row[2],
+        'pattern': row[3],
+        'sentence': loads(row[4])
     }
     
     return dumps(result)
@@ -147,9 +152,9 @@ def query_word_zh(db_cur: sqlite3.Cursor, word: str) -> str:
     if not row:
         return ""
 
-    paraphrase = decompress(row[1]).decode('utf8')
-    desc = decompress(row[2]).decode('utf8')
-    sentence = decompress(row[3]).decode('utf8')
+    paraphrase = row[1]
+    desc = row[2]
+    sentence = row[3]
 
     paraphrase = [] if paraphrase == "" else loads(paraphrase)
     desc = [] if desc == "" else loads(desc)

@@ -3,6 +3,7 @@ py3.install_sources(
         '__init__.py',
         'cli.py',
         'client.py',
+        'draw.py',
         'server.py',
         'utils.py',
     ],
@@ -12,4 +13,3 @@ py3.install_sources(
 subdir('core')
 subdir('dict')
 subdir('res')
-subdir('ui')
