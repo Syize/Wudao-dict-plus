@@ -16,15 +16,18 @@ wudao_dict.dict.local
     insert_word_zh
 """
 
+# TODO:
+#   1. 更新插入新词语的函数。
+#   2. 对词典数据库检查哈希值防止数据库损坏。这个检查应当在试图使用词典数据库但发生错误后的下一次试图使用时检查。
+
 import sqlite3
-from os.path import exists
-from typing import Optional, Literal, Any
 from json import loads, dumps
+from os.path import exists
+from typing import Optional, Literal
 
 from rich import print
 
-from ..core import DICT_DB_FILE
-from ..utils import compress, decompress
+from ..core import DICT_DB_FILE, ENWord, ZHWord
 
 
 class DictDBClient:
@@ -102,8 +105,7 @@ def query_word_en(db_cur: sqlite3.Cursor, word: str) -> str:
     :rtype: str
     """
     db_cmd = """
-        SELECT word_id, pronunciation_usa, pronunciation_uk, pronunciation_other,
-               paraphrase, rank, pattern, sentence
+        SELECT pronunciation, paraphrase, rank, pattern, sentence
         FROM en WHERE word=?
     """
     row = db_cur.execute(db_cmd, (word, )).fetchone()
@@ -111,18 +113,13 @@ def query_word_en(db_cur: sqlite3.Cursor, word: str) -> str:
     if not row:
         return ""
     
-    result = {
+    result: ENWord = {
         'word': word,
-        'id': row[0],
-        'pronunciation': {
-            '美': row[1],
-            '英': row[2],
-            '': row[3],
-        },
-        'paraphrase': loads(decompress(row[4]).decode('utf8')),
-        'rank': row[5],
-        'pattern': row[6],
-        'sentence': loads(decompress(row[7]).decode('utf8'))
+        'pronunciation': loads(row[0]),
+        'paraphrase': loads(row[1]),
+        'rank': row[2],
+        'pattern': row[3],
+        'sentence': loads(row[4])
     }
     
     return dumps(result)
@@ -140,21 +137,28 @@ def query_word_zh(db_cur: sqlite3.Cursor, word: str) -> str:
     :rtype: str
     """
     db_cmd = """
-        SELECT word_id, pronunciation, paraphrase, desc, sentence
+        SELECT pronunciation, paraphrase, desc, sentence
         FROM zh WHERE word=?
     """
     row = db_cur.execute(db_cmd, (word, )).fetchone()
     
     if not row:
         return ""
+
+    paraphrase = row[1]
+    desc = row[2]
+    sentence = row[3]
+
+    paraphrase = {} if paraphrase == "" else loads(paraphrase)
+    desc = [] if desc == "" else loads(desc)
+    sentence = [] if sentence == "" else loads(sentence)
     
-    result = {
+    result: ZHWord = {
         'word': word,
-        'id': row[0],
-        'pronunciation': row[1],
-        'paraphrase': loads(decompress(row[2]).decode('utf8')),
-        'desc': loads(decompress(row[3]).decode('utf8')),
-        'sentence': loads(decompress(row[4]).decode('utf8'))
+        'pronunciation': row[0],
+        'paraphrase': paraphrase,
+        'desc': desc,
+        'sentence': sentence
     }
     
     return dumps(result)
@@ -171,15 +175,15 @@ def insert_word_en(db_cur: sqlite3.Cursor, word_info: str):
     """
     db_cmd = """
             INSERT OR REPLACE INTO en
-            (word, word_id, pronunciation_usa, pronunciation_uk, pronunciation_other,
+            (word, pronunciation_usa, pronunciation_uk, pronunciation_other,
              paraphrase, rank, pattern, sentence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """
             
-    info_value: dict[str, Any] = loads(word_info)
+    info_value: ENWord = loads(word_info)
     values = (
-        info_value["word"], info_value["id"], info_value["pronunciation"]["美"],
-        info_value['pronunciation']["英"], info_value['pronunciation'][""], 
+        info_value["word"], info_value["pronunciation"]["usa"],
+        info_value['pronunciation']["uk"], info_value['pronunciation']["other"],
         info_value["paraphrase"], info_value["rank"], info_value["pattern"],
         info_value["sentence"]
     )
@@ -198,12 +202,12 @@ def insert_word_zh(db_cur: sqlite3.Cursor, word_info: str):
     """
     db_cmd = """
             INSERT OR REPLACE INTO zh
-            (word, word_id, pronunciation, paraphrase, desc, sentence)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (word, pronunciation, paraphrase, desc, sentence)
+            VALUES (?, ?, ?, ?, ?)
             """
-    info_value: dict[str, Any] = loads(word_info)
+    info_value: ZHWord = loads(word_info)
     values = (
-        info_value["word"], info_value["id"], info_value["pronunciation"],
+        info_value["word"], info_value["pronunciation"],
         info_value["paraphrase"], info_value["desc"], info_value["sentence"]
     )
     

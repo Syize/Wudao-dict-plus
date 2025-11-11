@@ -54,16 +54,16 @@ wudao_dict.core.config
     delete_socket
 """
 
+from json import load, dump
 from os import makedirs, remove
 from os.path import exists
-from platformdirs import user_config_dir, user_log_dir
 from typing import Any
-from json import load, dump
-from zstandard import ZstdDecompressor
+
+from platformdirs import user_config_dir, user_log_dir
 from rich import print
+from zstandard import ZstdDecompressor
 
 from ..res import DICT_DB_ZST
-
 
 APP_NAME = "wudao-dict"
 CONFIG_DIR = user_config_dir(appname=APP_NAME)
@@ -174,7 +174,7 @@ def check_dict_db():
     """
     检测本地词典数据库是否存在。若不存在，则解压数据库文件到配置目录。
     """
-    global DICT_DB_ZST, DICT_DB_FILE, CONFIG_DIR
+    global DICT_DB_FILE, CONFIG_DIR
     
     if exists(DICT_DB_FILE):
         return

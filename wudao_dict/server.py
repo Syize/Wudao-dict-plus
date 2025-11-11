@@ -16,6 +16,7 @@ import socket
 import sys
 import os
 from json import loads
+from traceback import format_exception
 
 from .core import create_socket, LOG_FILE, delete_socket
 from .dict import DictDBClient
@@ -66,7 +67,21 @@ def start_wudao_server(address="127.0.0.1"):
         return
     
     server = WudaoServer(address)
-    server.run()
+
+    try:
+        server.run()
+
+    except Exception as error:
+        server.logger.error(f"无道词典服务出现错误：")
+        for _line in format_exception(error):
+            _line = _line.strip("\n")
+
+            if "\n" in _line:
+                for _subline in _line.split("\n"):
+                    server.logger.error(_subline)
+
+            else:
+                server.logger.error(_line)
     
     exit(0)
 

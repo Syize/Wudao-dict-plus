@@ -11,14 +11,13 @@ wudao_dict.core.client
 """
 
 import socket
-import time
+from json import dumps
 from time import sleep
 from typing import Optional
-from json import dumps
 
 from rich import print
 
-from .core import read_socket, LOG_FILE
+from .core import LOG_FILE, read_socket
 from .server import start_wudao_server
 
 
@@ -69,7 +68,6 @@ class WudaoClient:
         if not res and not has_call_start:
             # 如果连接失败且没有执行过启动函数，则尝试启动。
             _start_wudao_server()
-            has_call_start = True
             port = read_socket()
             
             if not _check_server(self.client, address, port):
@@ -105,8 +103,6 @@ class WudaoClient:
         :return: 服务器返回的单词信息
         :rtype: str
         """
-        word = word.lower()
-        
         msg = dumps({"cmd": "query", "word": word})
         self.client.sendall(msg.encode('utf-8'))
         
