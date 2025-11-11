@@ -30,13 +30,13 @@ class CommandDraw:
         # 显示发音（青色）
         if word['pronunciation']:
             pronunciation_text = Text()
-            if '英' in word['pronunciation']:
-                pronunciation_text.append(f"英 {word['pronunciation']['英']}", style="cyan")
+            if 'uk' in word['pronunciation']:
+                pronunciation_text.append(f"英 {word['pronunciation']['uk']}", style="cyan")
                 pronunciation_text.append("  ")
-            if '美' in word['pronunciation']:
-                pronunciation_text.append(f"美 {word['pronunciation']['美']}", style="cyan")
-            if '' in word['pronunciation']:
-                pronunciation_text.append(f"英/美 {word['pronunciation']['']}", style="cyan")
+            if 'usa' in word['pronunciation']:
+                pronunciation_text.append(f"美 {word['pronunciation']['usa']}", style="cyan")
+            if 'other' in word['pronunciation'] and word['pronunciation']['other']:
+                pronunciation_text.append(f"英/美 {word['pronunciation']['other']}", style="cyan")
             self.console.print(pronunciation_text)
         
         # 显示释义（默认白色）

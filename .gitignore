@@ -107,3 +107,5 @@ ENV/
 
 uv.lock
 
+main.py
+*.db

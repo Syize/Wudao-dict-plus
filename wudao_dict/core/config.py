@@ -54,16 +54,14 @@ wudao_dict.core.config
     delete_socket
 """
 
+from json import load, dump
 from os import makedirs, remove
 from os.path import exists
+from typing import Any, TypedDict
+
 from platformdirs import user_config_dir, user_log_dir
-from typing import Any
-from json import load, dump
-from zstandard import ZstdDecompressor
 from rich import print
-
-from ..res import DICT_DB_ZST
-
+from zstandard import ZstdDecompressor
 
 APP_NAME = "wudao-dict"
 CONFIG_DIR = user_config_dir(appname=APP_NAME)
@@ -72,6 +70,29 @@ CONFIG_SOCKET_FILE = f"{CONFIG_DIR}/socket.json"
 LOG_DIR = user_log_dir(appname=APP_NAME)
 LOG_FILE = f"{LOG_DIR}/log.txt"
 DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
+
+
+class _ENPronounce(TypedDict):
+    usa: str
+    uk: str
+    other: str
+
+
+class ENWord(TypedDict):
+    word: str
+    pronunciation: _ENPronounce
+    paraphrase: list[str]
+    rank: str
+    pattern: str
+    sentence: list
+
+
+class ZHWord(TypedDict):
+    word: str
+    pronunciation: str
+    paraphrase: list[str]
+    desc: list[list]
+    sentence: list[list]
 
 
 def load_config() -> dict[str, Any]:
@@ -200,4 +221,4 @@ check_dict_db()
 
 __all__ = ["load_config", "save_config", "read_socket", "create_socket", "delete_socket",
            "CONFIG_DIR", "CONFIG_FILE", "CONFIG_SOCKET_FILE", "LOG_DIR", "LOG_FILE", "check_dict_db",
-           "DICT_DB_FILE"]
+           "DICT_DB_FILE", "ENWord", "ZHWord"]
