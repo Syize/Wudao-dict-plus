@@ -32,12 +32,17 @@ class ENWord(TypedDict):
     sentence: ENSentence
 
 
+class ZHDesc(TypedDict):
+    desc: str
+    desc_sentences: list[SentenceUnit]
+
+
 class ZHWord(TypedDict):
     word: str
     pronunciation: str
     paraphrase: list[str]
-    desc: list[list]
-    sentence: list[list]
+    desc: list[ZHDesc]
+    sentence: list[SentenceUnit]
 
 
 __all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord"]
