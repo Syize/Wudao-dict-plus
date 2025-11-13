@@ -27,8 +27,7 @@ from typing import Optional, Literal
 
 from rich import print
 
-from ..core import DICT_DB_FILE, ZHWord, ENWord
-from ..utils import decompress
+from ..core import DICT_DB_FILE, ENWord, ZHWord
 
 
 class DictDBClient:
@@ -113,16 +112,10 @@ def query_word_en(db_cur: sqlite3.Cursor, word: str) -> str:
     
     if not row:
         return ""
-
-    pronunciation = loads(row[0])
     
     result: ENWord = {
         'word': word,
-        'pronunciation': {
-            'usa': pronunciation["usa"],
-            'uk': pronunciation["uk"],
-            'other': pronunciation["other"],
-        },
+        'pronunciation': loads(row[0]),
         'paraphrase': loads(row[1]),
         'rank': row[2],
         'pattern': row[3],

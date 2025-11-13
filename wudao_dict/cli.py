@@ -13,7 +13,7 @@ import os
 
 from .core import load_config, save_config
 from .client import WudaoClient
-from .ui import CommandDraw
+from .draw import CommandDraw
 from .utils import is_alphabet
 
 
