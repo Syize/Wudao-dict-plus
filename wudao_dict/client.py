@@ -17,8 +17,7 @@ from typing import Optional
 
 from rich import print
 
-from .core import LOG_FILE, read_socket
-from .server import start_wudao_server
+from .core import LOG_FILE, read_socket, start_wudao_server
 
 
 def _start_wudao_server():

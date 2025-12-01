@@ -11,9 +11,11 @@ requires-python = ">=3.8"
 maintainers = [{ name = "Syize", email = "syizeliu@gmail.com" }]
 keywords = ["dictionary", "command-line"]
 dependencies = [
+    "autopep8>=2.3.1",
     "bs4>=0.0.2",
     "lxml>=6.0.2",
     "platformdirs>=4.3.6",
+    "pycryptodome>=3.23.0",
     "rich>=14.2.0",
     "zstandard>=0.23.0",
 ]
@@ -24,11 +26,15 @@ repository = "https://github.com/Syize/Wudao-dict-plus"
 documentation = "https://github.com/Syize/Wudao-dict-plus"
 "Bug Tracker" = "https://github.com/Syize/Wudao-dict-plus/issues"
 
-[tool.poetry]
-readme = "README.md"
+[tool.autopep8]
+max_line_length = 180
+in-place = true
 
 [dependency-groups]
-dev = ["ruff>=0.14.4"]
+dev = [
+    "ninja>=1.13.0",
+    "ruff>=0.14.4",
+]
 
 [project.scripts]
 wd = "wudao_dict.cli:main"

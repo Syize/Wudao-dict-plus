@@ -57,8 +57,10 @@ wudao_dict.core.config
 from json import load, dump
 from os import makedirs, remove
 from os.path import exists
-from typing import Any
+import sqlite3
+from typing import Any, Optional
 
+from Crypto.Cipher import AES
 from platformdirs import user_config_dir, user_log_dir
 from rich import print
 from zstandard import ZstdDecompressor
@@ -72,9 +74,10 @@ CONFIG_SOCKET_FILE = f"{CONFIG_DIR}/socket.json"
 LOG_DIR = user_log_dir(appname=APP_NAME)
 LOG_FILE = f"{LOG_DIR}/log.txt"
 DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
+CREDENCE_DB_FILE = f"{CONFIG_DIR}/credence.db"
 
 
-def load_config() -> dict[str, Any]:
+def load_config() -> "dict[str, Any]":
     """
     读取无道词典的配置。
 
@@ -101,7 +104,7 @@ def load_config() -> dict[str, Any]:
     return default_config
 
 
-def save_config(configs: dict[str, Any]):
+def save_config(configs: "dict[str, Any]"):
     """
     保存无道词典的配置。
 
@@ -198,6 +201,115 @@ def check_dict_db():
 check_dict_db()
 
 
+class CredenceManager:
+    def __init__(self, key: Optional[str] = None) -> None:
+        """
+        This class is used to manage tokens of online dictionary API.
+        Tokens will be encrypted with AES algorithm and saved to a local DB.
+        
+        :param key: AES key to encrypt/decrypt API token, defaults to use the built-in key.
+        :type key: Optional[str]
+        """
+        # Try open the local db.
+        if not exists(CONFIG_DIR):
+            makedirs(CONFIG_DIR)
+            
+        if not exists(CREDENCE_DB_FILE):
+            create_table = True
+        else:
+            create_table = False
+        
+        self.db = sqlite3.connect(CREDENCE_DB_FILE)
+        self.cur = self.db.cursor()
+        
+        self._get_cmd = """SELECT token FROM credence WHERE name = ?"""
+        self._save_cmd = """INSERT INTO credence VALUES (?, ?)"""
+        self._update_cmd = """UPDATE credence SET token = ? WHERE name = ?"""
+        
+        if key:
+            _key = key.encode("UTF-8").ljust(32, b"s")
+        else:
+            _key = b"WudaoDictPlussssssssssssssssssss"
+            
+        self._aes = AES.new(_key, AES.MODE_ECB)
+        
+        if create_table:
+            self.cur.execute("""CREATE TABLE credence(
+                name TEXT PRIMARY KEY NOT NULL,
+                token BLOB NOT NULL
+                )""")
+            
+            # write test token
+            self.save_token("test", "WudaoDictPlusTestToken")
+    
+    def get_token(self, name: str) -> Optional[str]:
+        """
+        Get the token of a online dictionary API.
+
+        :param name: Online dictionary API name.
+        :type name: str
+        :return: Token string, or ``None`` if ``name`` doesn't exist in the DB.
+        :rtype: Optional[str]
+        """
+        res: "tuple[bytes] | None" = self.cur.execute(self._get_cmd, (name, )).fetchone()
+        
+        if not res:
+            return None
+        
+        else:
+            encrypted_token = res[0]
+            token = self._aes.decrypt(encrypted_token).decode("UTF-8")
+            return token.rstrip("\x00")
+        
+    def save_token(self, name: str, token: str) -> bool:
+        """
+        Save or update a token of online dictionary API.
+
+        :param name: Online dictionary API name.
+        :type name: str
+        :param token: Token of the API.
+        :type token: str
+        :return: True if success, else False.
+        :rtype: bool
+        """
+        token_bytes = token.encode("UTF-8")
+        magnification_num = len(token_bytes) // 32
+        token_bytes = token_bytes.ljust(magnification_num * 32 + 32, b"\x00")
+        
+        encrypted_token = self._aes.encrypt(token_bytes)
+        
+        record = self.cur.execute(self._get_cmd, (name, )).fetchone()
+        
+        if record:
+            self.cur.execute(self._update_cmd, (encrypted_token, name))
+            
+        else:
+            self.cur.execute(self._save_cmd, (name, encrypted_token))
+            
+        self.db.commit()
+            
+        return True
+    
+    def test_key(self) -> bool:
+        """
+        Check if the AES key works.
+
+        :return: ``True`` if works.
+        :rtype: bool
+        """
+        token = self.get_token("test")
+        
+        if token is None or token != "WudaoDictPlusTestToken":
+            return False
+        
+        else:
+            return True
+        
+
+    def __del__(self):
+        self.db.close()
+
+
 __all__ = ["load_config", "save_config", "read_socket", "create_socket", "delete_socket",
            "CONFIG_DIR", "CONFIG_FILE", "CONFIG_SOCKET_FILE", "LOG_DIR", "LOG_FILE", "check_dict_db",
-           "DICT_DB_FILE"]
+           "DICT_DB_FILE", "CredenceManager"]

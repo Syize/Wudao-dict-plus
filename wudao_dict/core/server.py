@@ -18,9 +18,9 @@ import os
 from json import loads
 from traceback import format_exception
 
-from .core import create_socket, LOG_FILE, delete_socket
-from .dict import DictDBClient
-from .utils import set_log_file, is_alphabet
+from . import create_socket, LOG_FILE, delete_socket
+from ..dict import DictDBClient
+from ..utils import set_log_file, is_alphabet
 
 
 def _daemonize() -> bool:
@@ -137,7 +137,7 @@ class WudaoServer:
                 conn.sendall(msg.encode('utf-8'))
                 conn.close()
 
-    def _generate_msg(self, msg_data: dict[str, str]) -> str:
+    def _generate_msg(self, msg_data: "dict[str, str]") -> str:
         if "cmd" not in msg_data:
             self.logger.error("Wrong message")
             return ""
@@ -161,5 +161,5 @@ class WudaoServer:
            
             return ""
 
-                
+
 __all__ = ["start_wudao_server", "WudaoServer"]
