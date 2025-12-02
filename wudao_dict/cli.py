@@ -9,7 +9,8 @@
 import argparse
 import json
 import sys
-import os
+
+from rich import print
 
 from .core import load_config, save_config
 from .client import WudaoClient
@@ -25,19 +26,18 @@ class WudaoCLI:
         self.painter = CommandDraw()
         self.conf = load_config()
         self.client = WudaoClient()
+        self._temp_config = {
+            "short": False,
+            "online": False
+        }
 
-    def run(self, args):
+    def run(self, args: argparse.Namespace):
         """
         执行命令
 
         Args:
             args: argparse解析后的参数对象
         """
-        # 处理各种命令选项
-        if args.version:
-            self.show_version()
-            return
-
         if args.kill:
             self.client.close_server()
             return
@@ -48,37 +48,56 @@ class WudaoCLI:
 
         # 处理配置选项
         config_changed = False
-        if args.short is not None:
-            self.conf['short'] = args.short
-            config_changed = True
-            if args.short:
-                print('简明模式已开启！')
+        
+        if args.short:
+            short_mode = True if args.short == "yes" else False
+            
+            if short_mode:
+                print('[red]简明模式已开启！[red]')
+                
             else:
-                print('完整模式已开启！')
+                print('[red]完整模式已开启！[red]')
+                
+            self.conf["short"] = short_mode
+            config_changed = True
+            
+        if args.online:
+            online_mode = True if args.online == "yes" else False
+            
+            if online_mode:
+                print("[red]将优先使用在线释义，获取的释义会自动更新到离线数据库中。[red]")
+                
+            else:
+                print("[red]将优先使用本地数据库，其次是在线释义[red]")
+            
+            self.conf["online"] = online_mode
+            config_changed = True
 
         if config_changed:
             save_config(self.conf)
-
+            
+        # check the one time setting
+        if args.short_once:
+            self._temp_config["short"] = True
+        else:
+            self._temp_config["short"] = self.conf["short"]
+            
+        if args.long:
+            self._temp_config["short"] = False
+        else:
+            self._temp_config["short"] = self.conf["short"]
+            
+        if args.online_once:
+            self._temp_config["online"] = True
+        else:
+            self._temp_config["online"] = self.conf["online"]
+            
         # 执行查询
         if args.word:
             word = ' '.join(args.word)
             self.query(word)
-        # elif not any([args.version, args.kill, args.interactive]):
-        #     # 如果没有提供单词且没有其他命令，显示帮助
-        #     self.show_help()
 
-    def show_version(self):
-        """显示版本信息"""
-        print('Wudao-dict, Version \033[31m2.1\033[0m, Nov 27, 2019')
-
-    # def show_help(self):
-    #     """显示帮助信息"""
-    #     print('Usage: wd [OPTION]... [WORD]')
-    #     print('Youdao is wudao, a powerful dict.')
-        # print('生词本文件: ' + os.path.abspath('./usr/') + '/notebook.txt')
-        # print('查询次数: ' + os.path.abspath('./usr/') + '/usr_word.json')
-
-    def query(self, word, notename='notebook'):
+    def query(self, word: str):
         """
         查询单词
 
@@ -88,27 +107,28 @@ class WudaoCLI:
         """
         word_info = {}
         is_zh = False
-        if word:
-            if not is_alphabet(word[0]):
-                is_zh = True
+        if not is_alphabet(word[0]):
+            is_zh = True
 
         # 1. query on server
-        word_info = None
-        server_context = self.client.get_word_info(word).strip()
-        if server_context and server_context != 'None':
+        word_info = ""
+        server_context = self.client.get_word_info(word, online=self._temp_config["online"]).strip()
+        if server_context:
             word_info = json.loads(server_context)
 
         # 5. draw
         if word_info:
             if is_zh:
-                self.painter.draw_zh_text(word_info, self.conf)
+                self.painter.draw_zh_text(word_info, self._temp_config["short"])
             else:
-                self.painter.draw_text(word_info, self.conf)
+                self.painter.draw_text(word_info, self._temp_config["short"])
         else:
-            print('Word not exists.')
+            print('无法查询到相关释义')
 
     def interaction_mode(self):
         """交互模式"""
+        print("[red]无道词典增强版的交互模式未经测试，如果出现异常错误，请将错误信息反馈至:[red]")
+        print("[red] https://github.com/Syize/Wudao-dict-plus/issues [red]")
         print('进入交互模式。直接键入词汇查询单词的含义。下面提供了一些设置：')
         print(':help                    本帮助')
         # print(':note [filename]         设置生词本的名称')
@@ -158,55 +178,22 @@ def create_parser():
     """
     parser = argparse.ArgumentParser(
         prog='wd',
-        description='无道词典 - 一个简洁优雅的有道词典命令行版本',
+        description='无道词典增强版 - 一个简洁优雅的命令行词典',
         epilog='支持英汉互查的功能，包含释义、词组、例句等有助于学习的内容。'
     )
 
     # 位置参数
-    parser.add_argument(
-        'word',
-        nargs='*',
-        help='要查询的单词或短语'
-    )
+    parser.add_argument('word', nargs='*', help='要查询的单词或短语')
 
     # 选项参数
-    parser.add_argument(
-        '-k', '--kill',
-        action='store_true',
-        help='退出服务进程'
-    )
-
-    parser.add_argument(
-        '-s', '--short',
-        nargs='?',
-        const=True,
-        type=lambda x: x.lower() not in ('false', '0', 'no'),
-        metavar='BOOLEAN',
-        dest='short',
-        help='简明/完整模式 (默认: 开启简明模式)'
-    )
-
-    parser.add_argument(
-        '-i', '--interactive',
-        action='store_true',
-        help='进入交互模式'
-    )
-
-    # parser.add_argument(
-    #     '-n', '--note',
-    #     nargs='?',
-    #     const=True,
-    #     type=lambda x: x.lower() not in ('false', '0', 'no'),
-    #     metavar='BOOLEAN',
-    #     dest='save',
-    #     help='保存/不保存到生词本 (默认: 开启保存)'
-    # )
-
-    parser.add_argument(
-        '-v', '--version',
-        action='store_true',
-        help='显示版本信息'
-    )
+    parser.add_argument('-k', '--kill', action='store_true', help='退出服务进程')
+    parser.add_argument('-i', '--interactive', action='store_true', help='进入交互模式（未经测试，可能会出现未知错误）')
+    parser.add_argument("-o", "--online-once", action="store_true", help="仅本次查询优先获取在线释义")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-s", "--short-once", action="store_true", help="仅本次查询启用简明模式")
+    group.add_argument("-l", "--long", action="store_true", help="仅本次查询关闭简明模式")
+    parser.add_argument("--online", type=str, choices=["yes", "no"], help="是否强制优先获取在线释义，全局生效")
+    parser.add_argument("--short", type=str, choices=["yes", "no"], help="是否启用简明模式，全局生效")
 
     return parser
 

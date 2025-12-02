@@ -1,4 +1,4 @@
-from typing import TypedDict, Union
+from typing import TypedDict, Literal, Union
 
 
 class ENPronounce(TypedDict):
@@ -45,6 +45,19 @@ class ZHWord(TypedDict):
     sentence: "list[SentenceUnit]"
     
     
+class QuitMessage(TypedDict):
+    cmd: Literal["quit"]
+    
+
+class QueryMessage(TypedDict):
+    cmd: Literal["query"]
+    word: str
+    online: bool
+    
+    
+Message = Union[QuitMessage, QueryMessage]
+    
+    
 class OnlineAPIBase:
     def __init__(self, token: str) -> None:
         self.token = token
@@ -89,4 +102,5 @@ class OnlineAPIBase:
         return self.parse_response_en(response)
 
 
-__all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord", "OnlineAPIBase"]
+__all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord", "OnlineAPIBase",
+           "Message", "QuitMessage", "QueryMessage"]

@@ -17,7 +17,7 @@ from typing import Optional
 
 from rich import print
 
-from .core import LOG_FILE, read_socket
+from .core import LOG_FILE, read_socket, QuitMessage, QueryMessage
 from .server import start_wudao_server
 
 
@@ -91,8 +91,8 @@ class WudaoClient:
         """
         关闭无道词典服务进程。
         """
-        msg = dumps({"cmd": "quit"})
-        self.client.sendall(msg.encode('utf-8'))
+        msg: QuitMessage = {"cmd": "quit"}
+        self.client.sendall(dumps(msg).encode('utf-8'))
     
     def get_word_info(self, word: str, online=True) -> str:
         """
@@ -103,8 +103,12 @@ class WudaoClient:
         :return: 服务器返回的单词信息
         :rtype: str
         """
-        msg = dumps({"cmd": "query", "word": word, "online": online})
-        self.client.sendall(msg.encode('utf-8'))
+        msg: QueryMessage = {
+            "cmd": "query",
+            "word": word,
+            "online": online
+        }
+        self.client.sendall(dumps(msg).encode('utf-8'))
         
         server_context = b''
         while True:

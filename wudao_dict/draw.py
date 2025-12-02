@@ -19,7 +19,7 @@ class CommandDraw:
         """初始化rich控制台对象"""
         self.console = Console()
 
-    def draw_text(self, word: ENWord, conf):
+    def draw_text(self, word: ENWord, short=False):
         # 1. 单词标题
         self.console.print(word['word'], style="bold red")
 
@@ -64,7 +64,7 @@ class CommandDraw:
             self.console.print(rank_pattern)
 
         # === 例句 ===
-        if not conf.get('short', False):
+        if not short:
             self.console.print("")  # 空行分隔
 
             sentence = word["sentence"]
@@ -118,7 +118,7 @@ class CommandDraw:
 
             self.console.print(table)
 
-    def draw_zh_text(self, word: ZHWord, conf):
+    def draw_zh_text(self, word: ZHWord, short=False):
         """
         绘制中文单词查询结果
 
@@ -151,7 +151,7 @@ class CommandDraw:
             self.console.print(table)
 
         # 根据配置决定是否显示详细信息
-        if conf.get('short', True):
+        if short:
             return
 
         # 显示详细描述

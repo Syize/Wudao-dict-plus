@@ -88,7 +88,7 @@ def load_config() -> "dict[str, Any]":
     
     default_config = {
             "short": False,      # 简明模式
-            "save": True,        # 保存到生词本
+            "online": False,
         }
     
     if not exists(CONFIG_DIR):
@@ -100,6 +100,10 @@ def load_config() -> "dict[str, Any]":
             
         # 通过此种方式保证所有配置项都存在
         default_config.update(config)
+        
+    else:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            dump(default_config, f)
         
     return default_config
 

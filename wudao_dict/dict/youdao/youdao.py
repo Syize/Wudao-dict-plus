@@ -2,6 +2,7 @@ import re
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from requests import get
+from requests.exceptions import Timeout, ReadTimeout
 from typing import Optional, Dict, List, Tuple
 
 from wudao_dict.core import ENWord, ENPronounce, ENSentence, CollinsSentenceUnit
@@ -101,8 +102,9 @@ def _get_pattern(p_tag: Tag) -> str:
         return ""
     
     text = text.strip("[]")
-    pattern_list = re.findall(r"[a-zA-Z]+", text)
-    return f"( {', '.join(pattern_list)} )"
+    pattern_list = re.findall(r"[a-zA-Z\s]+", text)
+    pattern_list = [x.strip() for x in pattern_list]
+    return f"( {', '.join(x for x in pattern_list if x)} )"
 
 
 def _get_paraphrase_pattern(html: BeautifulSoup) -> Tuple[Dict[str, List[str]], str]:
@@ -214,7 +216,15 @@ def search_youdao_en(word: str) -> Optional[ENWord]:
     :rtype: ENWord
     """
     url = f"http://dict.youdao.com/w/{word}"
-    res = get(url, headers=HEADERS)
+    
+    try:
+        res = get(url, headers=HEADERS, timeout=(2, 2))
+    
+    except (Timeout, ReadTimeout):
+        res = None
+        
+    if not res:
+        return None
     
     if res.status_code != 200:
         return None

@@ -18,7 +18,7 @@
 |   词典服务进程   |             启动快              |             启动慢              |
 | 词典服务进程实现 |      Python实现，随机端口       |     依赖shell脚本，固定端口     |
 |     安装方法     | 打包上传pypi，<br />支持pip安装 | git克隆仓库，<br />运行安装脚本 |
-|     在线词典     |            暂不支持             |             已失效              |
+|     在线词典     | 支持 |             已失效              |
 |      生词本      |            暂不支持             |              支持               |
 |     自动补全     |            暂不支持             |              支持               |
 |     词条上报     |         已移除相关功能          |             已失效              |
@@ -54,20 +54,22 @@ pip install wudao-dict-plus
 
 ```
 $ wd -h
-usage: wd [-h] [-k] [-s [BOOLEAN]] [-i] [-v] [word ...]
+usage: wd [-h] [-k] [-i] [-o] [-s | -l] [--online {yes,no}] [--short {yes,no}] [word [word ...]]
 
-无道词典 - 一个简洁优雅的有道词典命令行版本
+无道词典增强版 - 一个简洁优雅的命令行词典
 
 positional arguments:
-  word                  要查询的单词或短语
+  word               要查询的单词或短语
 
-options:
-  -h, --help            show this help message and exit
-  -k, --kill            退出服务进程
-  -s [BOOLEAN], --short [BOOLEAN]
-                        简明/完整模式 (默认: 开启简明模式)
-  -i, --interactive     进入交互模式
-  -v, --version         显示版本信息
+optional arguments:
+  -h, --help         show this help message and exit
+  -k, --kill         退出服务进程
+  -i, --interactive  进入交互模式（未经测试，可能会出现未知错误）
+  -o, --online-once  仅本次查询优先获取在线释义
+  -s, --short-once   仅本次查询启用简明模式
+  -l, --long         仅本次查询关闭简明模式
+  --online {yes,no}  是否强制优先获取在线释义，全局生效
+  --short {yes,no}   是否启用简明模式，全局生效
 
 支持英汉互查的功能，包含释义、词组、例句等有助于学习的内容。
 ```
@@ -77,7 +79,7 @@ options:
 
 ## 小贴士
 
-1. 如果您不想看到例句, 请使用`wd -s`关闭。可以再次运行该命令打开。
+1. 如果您不想看到例句, 请使用`wd -s`关闭。
 2. 查询词组直接键入类似`wd take off`即可.
 
 ## 致谢

@@ -18,7 +18,7 @@ import os
 from json import loads, dumps
 from traceback import format_exception
 
-from .core import create_socket, LOG_FILE, delete_socket
+from .core import create_socket, LOG_FILE, delete_socket, Message, QueryMessage
 from .dict import DictDBClient, search_youdao_en
 from .utils import set_log_file, is_alphabet
 
@@ -123,7 +123,7 @@ class WudaoServer:
                 data = conn.recv(1024)
                 
                 msg = data.decode('utf-8').strip()
-                msg_data: dict[str, str] = loads(msg)
+                msg_data: Message = loads(msg)
                 self.logger.info(f"Receive message: {msg_data}")
                 
                 if msg_data["cmd"] == "quit":
@@ -137,7 +137,7 @@ class WudaoServer:
                 conn.sendall(msg.encode('utf-8'))
                 conn.close()
 
-    def _generate_msg(self, msg_data: "dict[str, str]") -> str:
+    def _generate_msg(self, msg_data: QueryMessage) -> str:
         if "cmd" not in msg_data:
             self.logger.error("Wrong message")
             return ""
@@ -155,28 +155,24 @@ class WudaoServer:
             
             lang_type = "en" if is_alphabet(word[0]) else "zh"
             
-            if lang_type == "en" and is_online:
-                res = search_youdao_en(word)
-                
-                if res:
-                    word_info = dumps(res)
-                else:
-                    # default to local db
+            if is_online:
+                if lang_type == "zh":
+                    # online query for Chinese word hasn't been implemented yet.
                     word_info = self.local_dict.query_word(lang_type, word)
-                    
+                
+                else:
+                    res = search_youdao_en(word)
+                    if res:
+                        word_info = dumps(res)
+                    else:
+                        word_info = ""
+                        
             else:
                 word_info = self.local_dict.query_word(lang_type, word)
-            
-            # if lang_type == "en":
-            #     res = search_youdao_en(word)
-            #     if res:
-            #         word_info = dumps(res)
-            
-            # if not word_info:
-            #     # try online api
-            #     res = search_youdao_en(word)
-            #     if res:
-            #         word_info = dumps(res)
+                if not word_info and lang_type == "en":
+                    res = search_youdao_en(word)
+                    if res:
+                        word_info = dumps(res)
             
             return word_info
 

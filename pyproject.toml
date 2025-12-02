@@ -4,14 +4,13 @@ requires = ["meson-python"]
 
 [project]
 name = "wudao-dict-plus"
-version = "3.1.0"
+version = "3.2.0"
 description = "无道词典增强版。对原有的无道词典的功能进行了修复和增强。"
 readme = "README.md"
 requires-python = ">=3.8"
 maintainers = [{ name = "Syize", email = "syizeliu@gmail.com" }]
 keywords = ["dictionary", "command-line"]
 dependencies = [
-    "autopep8>=2.3.1",
     "bs4>=0.0.2",
     "lxml>=6.0.2",
     "platformdirs>=4.3.6",
@@ -33,6 +32,7 @@ in-place = true
 
 [dependency-groups]
 dev = [
+    "autopep8>=2.3.1",
     "ninja>=1.13.0",
     "ruff>=0.14.4",
 ]
