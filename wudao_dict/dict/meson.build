@@ -5,3 +5,5 @@ py3.install_sources(
     ],
     subdir: 'wudao_dict/dict',
 )
+
+subdir('youdao')

@@ -45,7 +45,7 @@ class CommandDraw:
         # 3. 释义
         table = Table(show_header=False, padding=(0, 1, 0, 0), box=None)
         table.add_column("category", no_wrap=True)
-        table.add_column("means")
+        table.add_column("means", overflow="fold")
         paraphrase = word["paraphrase"]
 
         for _category in paraphrase.keys():

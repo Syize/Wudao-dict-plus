@@ -15,12 +15,12 @@ import logging
 import socket
 import sys
 import os
-from json import loads
+from json import loads, dumps
 from traceback import format_exception
 
-from . import create_socket, LOG_FILE, delete_socket
-from ..dict import DictDBClient
-from ..utils import set_log_file, is_alphabet
+from .core import create_socket, LOG_FILE, delete_socket
+from .dict import DictDBClient, search_youdao_en
+from .utils import set_log_file, is_alphabet
 
 
 def _daemonize() -> bool:
@@ -151,8 +151,32 @@ class WudaoServer:
             if not word:
                 return ""
             
+            is_online = msg_data["online"]
+            
             lang_type = "en" if is_alphabet(word[0]) else "zh"
-            word_info = self.local_dict.query_word(lang_type, word)
+            
+            if lang_type == "en" and is_online:
+                res = search_youdao_en(word)
+                
+                if res:
+                    word_info = dumps(res)
+                else:
+                    # default to local db
+                    word_info = self.local_dict.query_word(lang_type, word)
+                    
+            else:
+                word_info = self.local_dict.query_word(lang_type, word)
+            
+            # if lang_type == "en":
+            #     res = search_youdao_en(word)
+            #     if res:
+            #         word_info = dumps(res)
+            
+            # if not word_info:
+            #     # try online api
+            #     res = search_youdao_en(word)
+            #     if res:
+            #         word_info = dumps(res)
             
             return word_info
 

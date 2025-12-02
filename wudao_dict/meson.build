@@ -4,6 +4,7 @@ py3.install_sources(
         'cli.py',
         'client.py',
         'draw.py',
+        'server.py',
         'utils.py',
     ],
     subdir: 'wudao_dict',
