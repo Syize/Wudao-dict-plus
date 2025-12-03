@@ -65,19 +65,20 @@ class CommandDraw:
 
         # === 例句 ===
         if not short:
-            self.console.print("")  # 空行分隔
-
             sentence = word["sentence"]
             collins_format = sentence["is_collins"]
 
             table = Table(show_header=True, padding=(0, 1, 0, 0), box=None)
             table.add_column("例句", header_style="red", no_wrap=True)
             table.add_column("", header_style="white", overflow="fold")
+            has_sentence = False
+            
             if collins_format:
 
                 sentences_group_list: list[CollinsSentenceUnit] = sentence["sentences"]
 
                 for index, _group in enumerate(sentences_group_list):
+                    has_sentence = True
                     _mean = _group["mean"]
                     _category = _group["category"]
                     _sentences = _group["sentences"]
@@ -106,6 +107,7 @@ class CommandDraw:
                 sentences_group_list: list[SentenceUnit] = sentence["sentences"]
 
                 for index, _group in enumerate(sentences_group_list):
+                    has_sentence = True
                     output_title = Text()
                     output_title.append(f"{index}.", style="green")
 
@@ -116,7 +118,9 @@ class CommandDraw:
 
                     table.add_row(output_title, output_sentence)
 
-            self.console.print(table)
+            if has_sentence:
+                self.console.print("")  # 空行分隔
+                self.console.print(table)
 
     def draw_zh_text(self, word: ZHWord, short=False):
         """

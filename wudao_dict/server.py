@@ -168,6 +168,7 @@ class WudaoServer:
                     if res:
                         word_info = dumps(res)
                         if is_update_db:
+                            self.logger.info(f"Update DB: {res}")
                             self.local_dict.insert_word("en", word_info)
                     else:
                         word_info = ""
@@ -180,6 +181,7 @@ class WudaoServer:
                     if res:
                         word_info = dumps(res)
                         if is_update_db:
+                            self.logger.info(f"Update DB: {res}")
                             self.local_dict.insert_word("en", word_info)
             
             return word_info

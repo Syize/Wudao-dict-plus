@@ -175,17 +175,15 @@ def insert_word_en(db_cur: sqlite3.Cursor, word_info: str):
     """
     db_cmd = """
             INSERT OR REPLACE INTO en
-            (word, pronunciation_usa, pronunciation_uk, pronunciation_other,
-             paraphrase, rank, pattern, sentence)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (word, pronunciation, paraphrase, rank, pattern, sentence)
+            VALUES (?, ?, ?, ?, ?, ?)
             """
             
     info_value: ENWord = loads(word_info)
     values = (
-        info_value["word"], info_value["pronunciation"]["usa"],
-        info_value['pronunciation']["uk"], info_value['pronunciation']["other"],
-        info_value["paraphrase"], info_value["rank"], info_value["pattern"],
-        info_value["sentence"]
+        info_value["word"], dumps(info_value["pronunciation"], ensure_ascii=False),
+        dumps(info_value["paraphrase"], ensure_ascii=False), info_value["rank"], info_value["pattern"],
+        dumps(info_value["sentence"], ensure_ascii=False)
     )
     
     db_cur.execute(db_cmd, values)
