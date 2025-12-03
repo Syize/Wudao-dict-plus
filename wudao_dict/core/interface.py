@@ -53,6 +53,7 @@ class QueryMessage(TypedDict):
     cmd: Literal["query"]
     word: str
     online: bool
+    update_db: bool
     
     
 Message = Union[QuitMessage, QueryMessage]

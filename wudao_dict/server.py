@@ -152,27 +152,35 @@ class WudaoServer:
                 return ""
             
             is_online = msg_data["online"]
+            is_update_db = msg_data["update_db"]
             
             lang_type = "en" if is_alphabet(word[0]) else "zh"
             
             if is_online:
+                
                 if lang_type == "zh":
                     # online query for Chinese word hasn't been implemented yet.
                     word_info = self.local_dict.query_word(lang_type, word)
                 
                 else:
                     res = search_youdao_en(word)
+                    
                     if res:
                         word_info = dumps(res)
+                        if is_update_db:
+                            self.local_dict.insert_word("en", word_info)
                     else:
                         word_info = ""
                         
             else:
                 word_info = self.local_dict.query_word(lang_type, word)
+                
                 if not word_info and lang_type == "en":
                     res = search_youdao_en(word)
                     if res:
                         word_info = dumps(res)
+                        if is_update_db:
+                            self.local_dict.insert_word("en", word_info)
             
             return word_info
 

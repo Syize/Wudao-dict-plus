@@ -89,6 +89,7 @@ def load_config() -> "dict[str, Any]":
     default_config = {
             "short": False,      # 简明模式
             "online": False,
+            "update_db": True
         }
     
     if not exists(CONFIG_DIR):

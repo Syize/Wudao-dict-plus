@@ -11,8 +11,9 @@ import json
 import sys
 
 from rich import print
+from rich.table import Table
 
-from .core import load_config, save_config
+from .core import load_config, save_config, CONFIG_FILE
 from .client import WudaoClient
 from .draw import CommandDraw
 from .utils import is_alphabet
@@ -45,6 +46,10 @@ class WudaoCLI:
         if args.interactive:
             self.interaction_mode()
             return
+        
+        if args.config:
+            self.print_global_config()
+            return
 
         # 处理配置选项
         config_changed = False
@@ -71,6 +76,18 @@ class WudaoCLI:
                 print("[red]将优先使用本地数据库，其次是在线释义[red]")
             
             self.conf["online"] = online_mode
+            config_changed = True
+            
+        if args.update:
+            update_db = True if args.update == "yes" else False
+            
+            if update_db:
+                print("[red]将使用在线释义更新离线数据库[red]")
+                
+            else:
+                print("[red]不使用在线释义更新离线数据库[red]")
+                
+            self.conf["update_db"] = update_db
             config_changed = True
 
         if config_changed:
@@ -112,7 +129,12 @@ class WudaoCLI:
 
         # 1. query on server
         word_info = ""
-        server_context = self.client.get_word_info(word, online=self._temp_config["online"]).strip()
+        server_context = self.client.get_word_info(
+            word,
+            online=self._temp_config["online"],
+            update_db=self.conf["update_db"]
+        ).strip()
+        
         if server_context:
             word_info = json.loads(server_context)
 
@@ -167,6 +189,20 @@ class WudaoCLI:
                 continue
             if inp.strip():
                 self.query(inp.strip(), conf['notename'])
+                
+    def print_global_config(self):
+        table = Table()
+        table.add_column("配置项", no_wrap=True, style="red")
+        table.add_column("用途", overflow="fold", style="white")
+        table.add_column("值", no_wrap=True, style="green")
+        
+        table.add_row("online", "是否优先使用在线释义", "启用" if self.conf["online"] else "不启用")
+        table.add_row("short", "是否启用简明模式", "启用" if self.conf["short"] else "不启用")
+        table.add_row("update_db", "是否使用在线释义更新离线数据库", "启用" if self.conf["update_db"] else "不启用")
+        
+        print("[boldwhite]无道词典增强版全局配置[boldwhite]")
+        print(table)
+        print(f"[cyan]配置文件位于：[boldwhite]{CONFIG_FILE}")
 
 
 def create_parser():
@@ -186,14 +222,21 @@ def create_parser():
     parser.add_argument('word', nargs='*', help='要查询的单词或短语')
 
     # 选项参数
-    parser.add_argument('-k', '--kill', action='store_true', help='退出服务进程')
-    parser.add_argument('-i', '--interactive', action='store_true', help='进入交互模式（未经测试，可能会出现未知错误）')
-    parser.add_argument("-o", "--online-once", action="store_true", help="仅本次查询优先获取在线释义")
+    
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-c", "--config", action="store_true", help="打印全局配置选项")
+    group.add_argument('-i', '--interactive', action='store_true', help='进入交互模式（未经测试，可能会出现未知错误）')
+    group.add_argument('-k', '--kill', action='store_true', help='退出服务进程')
+    
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-s", "--short-once", action="store_true", help="仅本次查询启用简明模式")
     group.add_argument("-l", "--long", action="store_true", help="仅本次查询关闭简明模式")
+    
+    parser.add_argument("-o", "--online-once", action="store_true", help="仅本次查询优先获取在线释义")
+    
     parser.add_argument("--online", type=str, choices=["yes", "no"], help="是否强制优先获取在线释义，全局生效")
     parser.add_argument("--short", type=str, choices=["yes", "no"], help="是否启用简明模式，全局生效")
+    parser.add_argument("-u", "--update", type=str, choices=["yes", "no"], help="是否使用在线释义更新离线数据库")
 
     return parser
 
