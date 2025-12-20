@@ -4,7 +4,7 @@ requires = ["meson-python"]
 
 [project]
 name = "wudao-dict-plus"
-version = "3.3.1"
+version = "3.3.2"
 description = "无道词典增强版。对原有的无道词典的功能进行了修复和增强。"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -14,7 +14,6 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "lxml>=6.0.2",
     "platformdirs>=4.3.6",
-    "pycryptodome>=3.23.0",
     "requests>=2.32.4",
     "rich>=14.2.0",
     "zstandard>=0.23.0",

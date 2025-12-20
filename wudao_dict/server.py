@@ -12,15 +12,15 @@ wudao_dict.core.server
 """
 
 import logging
+import os
 import socket
 import sys
-import os
-from json import loads, dumps
+from json import dumps, loads
 from traceback import format_exception
 
-from .core import create_socket, LOG_FILE, delete_socket, Message, QueryMessage
+from .core import LOG_FILE, Message, QueryMessage, create_socket, delete_socket
 from .dict import DictDBClient, search_youdao_en
-from .utils import set_log_file, is_alphabet
+from .utils import is_alphabet, set_log_file
 
 
 def _daemonize() -> bool:
@@ -72,7 +72,7 @@ def start_wudao_server(address="127.0.0.1"):
         server.run()
 
     except Exception as error:
-        server.logger.error(f"无道词典服务出现错误：")
+        server.logger.error("无道词典服务出现错误：")
         for _line in format_exception(error):
             _line = _line.strip("\n")
 

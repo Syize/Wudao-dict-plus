@@ -1,4 +1,4 @@
-from typing import TypedDict, Literal, Union
+from typing import Literal, TypedDict, Union
 
 
 class ENPronounce(TypedDict):
@@ -57,51 +57,7 @@ class QueryMessage(TypedDict):
     
     
 Message = Union[QuitMessage, QueryMessage]
-    
-    
-class OnlineAPIBase:
-    def __init__(self, token: str) -> None:
-        self.token = token
-        
-    def query_api(self, word: str, lang: str) -> "dict":
-        """
-        Query word information from API.
-
-        :param word: Word or paraphase.
-        :type word: str
-        :param lang: Language type.
-        :type lang: str
-        :return: Response results.
-        :rtype: dict
-        """
-        raise NotImplementedError("You have to implement this method.")
-    
-    def parse_response_en(self, response: "dict") -> ENWord:
-        """
-        Parse the response from the API.
-
-        :param response: Response results.
-        :type response: dict
-        :param lang: Language type.
-        :type lang: str
-        :return: Word information.
-        :rtype: ENWord
-        """
-        raise NotImplementedError("You have to implement this method.")
-        
-    def get_en_word(self, word: str) -> "ENWord":
-        """
-        Get Englist word information from online API.
-
-        :param word: English word or paraphase.
-        :type word: str
-        :return: Word information.
-        :rtype: ENWord
-        """
-        # check the word
-        response = self.query_api(word, "en")
-        return self.parse_response_en(response)
 
 
-__all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord", "OnlineAPIBase",
+__all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord",
            "Message", "QuitMessage", "QueryMessage"]
