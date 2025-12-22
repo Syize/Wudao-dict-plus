@@ -1,6 +1,6 @@
 # 无道词典增强版
 
-![py](https://img.shields.io/badge/python-3.4.5-green.svg?style=plastic)![plat](https://img.shields.io/badge/platform-Ubuntu/CentOS/Debian-green.svg?style=plastic)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSyize%2FWudao-dict-plus%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml) ![plat](https://img.shields.io/badge/platform-Linux/MacOS-blue.svg?style=plastic)
 
 ---
 
@@ -81,6 +81,11 @@ optional arguments:
 ```
 
 查词时可以直接使用`wd 词语`查汉英词典，或`wd word`查英汉词典(可以自动检测)。
+
+## TODO
+
+- [ ] 完全的跨平台兼容 (目前不支持在 Windows 上使用)
+- [ ] 发音功能支持 ([#4](https://github.com/Syize/Wudao-dict-plus/issues/4))
 
 ## 致谢
 
