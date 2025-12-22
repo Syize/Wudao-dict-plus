@@ -17,7 +17,7 @@ from typing import Optional
 
 from rich import print
 
-from .core import LOG_FILE, read_socket, QuitMessage, QueryMessage
+from .core import LOG_FILE, QueryMessage, QuitMessage, read_socket
 from .server import start_wudao_server
 
 
@@ -38,15 +38,20 @@ def _check_server(address: str, port: int) -> Optional[socket.socket]:
     :return: Connected socket if server is running, else None.
     :rtype: Optional[socket.socket]
     """
+    client = None
+    
     for _ in range(5):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
         try:
             client.connect((address, port))
-            return client
+
         except (ConnectionRefusedError, OSError):
             client.close()
+            client = None
             sleep(0.2)
-    return None
+
+    return client
 
 
 class WudaoClient:
@@ -126,7 +131,8 @@ class WudaoClient:
         """
         if self._check_server_internal(no_start=True):
             msg: QuitMessage = {"cmd": "quit"}
-            self.client.sendall(dumps(msg).encode('utf-8'))
+            # client should not be None
+            self.client.sendall(dumps(msg).encode('utf-8'))     # type: ignore
 
     def get_word_info(self, word: str, online=True, update_db=True) -> str:
         """
@@ -145,11 +151,11 @@ class WudaoClient:
             "online": online,
             "update_db": update_db
         }
-        self.client.sendall(dumps(msg).encode('utf-8'))
+        self.client.sendall(dumps(msg).encode('utf-8'))     # type: ignore
         
         server_context = b''
         while True:
-            rec = self.client.recv(512)
+            rec = self.client.recv(512)     # type: ignore
             if not rec:
                 break
             server_context += rec
