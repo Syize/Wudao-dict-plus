@@ -13,9 +13,10 @@ import sys
 from rich import print
 from rich.table import Table
 
-from .core import load_config, save_config, CONFIG_FILE
 from .client import WudaoClient
+from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
+from .server import WudaoServer
 from .utils import is_alphabet
 
 
@@ -49,6 +50,10 @@ class WudaoCLI:
         
         if args.config:
             self.print_global_config()
+            return
+        
+        if args.daemon:
+            self.run_daemon()
             return
 
         # 处理配置选项
@@ -203,6 +208,15 @@ class WudaoCLI:
         print("[boldwhite]无道词典增强版全局配置[boldwhite]")
         print(table)
         print(f"[cyan]配置文件位于：[boldwhite]{CONFIG_FILE}")
+        
+    def run_daemon(self):
+        server = WudaoServer(is_foreground=True)
+        print("正在运行无道词典服务")
+        try:
+            server.run()
+            
+        except KeyboardInterrupt:
+            print("无道词典服务已退出")
 
 
 def create_parser():
@@ -225,6 +239,7 @@ def create_parser():
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-c", "--config", action="store_true", help="打印全局配置选项")
+    group.add_argument("-d", "--daemon", action="store_true", help="在前台运行无道词典服务(可用于DEBUG)")
     group.add_argument('-i', '--interactive', action='store_true', help='进入交互模式（未经测试，可能会出现未知错误）')
     group.add_argument('-k', '--kill', action='store_true', help='退出服务进程')
     

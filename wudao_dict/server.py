@@ -18,8 +18,10 @@ import sys
 from json import dumps, loads
 from traceback import format_exception
 
+from rich.logging import RichHandler
+
 from .core import LOG_FILE, Message, QueryMessage, create_socket, delete_socket
-from .dict import DictDBClient, search_youdao_en
+from .dict import DictDBClient, search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
 
@@ -96,10 +98,13 @@ class WudaoServer:
     该服务器使用的端口由系统分配，并将其记录到socket文件中。
     """
     
-    def __init__(self, address="127.0.0.1"):
+    def __init__(self, address="127.0.0.1", is_foreground=False):
         self.local_dict = DictDBClient()
         self.logger = logging.getLogger("wudao-dict")
         set_log_file(LOG_FILE)
+        
+        if is_foreground:
+            self.add_stdout_handler()
         
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -108,6 +113,13 @@ class WudaoServer:
         create_socket(port)
         self.logger.info(f"WudaoServer listening on: {address}:{port}")
         self.server.listen(5)
+        
+    def add_stdout_handler(self):
+        formatter = logging.Formatter("%(name)s :: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+        # use rich handler
+        handler = RichHandler()
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
         
     def run(self):
         """
@@ -123,19 +135,61 @@ class WudaoServer:
                 data = conn.recv(1024)
                 
                 msg = data.decode('utf-8').strip()
-                msg_data: Message = loads(msg)
-                self.logger.info(f"Receive message: {msg_data}")
                 
-                if msg_data["cmd"] == "quit":
-                    self.server.close()
-                    delete_socket()
-                    self.logger.info("WudaoServer exits.")
-                    break
-                
-                msg = self._generate_msg(msg_data)
-                
+                if msg:
+                    msg_data: Message = loads(msg)
+                    self.logger.info(f"Receive message: {msg_data}")
+                    
+                    if msg_data["cmd"] == "quit":
+                        self.server.close()
+                        delete_socket()
+                        self.logger.info("WudaoServer exits.")
+                        break
+
+                    msg = self._generate_msg(msg_data)
+                    
+                else:
+                    self.logger.warning(f"Receive empty message, please check your request: {msg}")
+
                 conn.sendall(msg.encode('utf-8'))
                 conn.close()
+                
+    def _query_online_api(self, api_name: str, word: str, lang_type: str, is_update_db: bool) -> str:
+        """
+        Query word from online API.
+
+        :param api_name: API name.
+        :type api_name: str
+        :param word: Word.
+        :type word: str
+        :param lang_type: Word type.
+        :type lang_type: str
+        :param is_update_db: If update local DB.
+        :type is_update_db: bool
+        :return: Word information.
+        :rtype: str
+        """
+        if api_name == "youdao":
+            if lang_type == "zh":
+                res = search_youdao_zh(word)
+            else:
+                res = search_youdao_en(word)
+                
+            if res:
+                word_info = dumps(res)
+                
+                if is_update_db and lang_type == "en":
+                    self.logger.info(f"Update DB: {res}")
+                    self.local_dict.insert_word("en", word_info)
+            
+            else:
+                word_info = ""
+                    
+        else:
+            self.logger.error(f"Unknown online API: {api_name}")
+            word_info = ""
+            
+        return word_info
 
     def _generate_msg(self, msg_data: QueryMessage) -> str:
         if "cmd" not in msg_data:
@@ -157,32 +211,13 @@ class WudaoServer:
             lang_type = "en" if is_alphabet(word[0]) else "zh"
             
             if is_online:
-                
-                if lang_type == "zh":
-                    # online query for Chinese word hasn't been implemented yet.
-                    word_info = self.local_dict.query_word(lang_type, word)
-                
-                else:
-                    res = search_youdao_en(word)
-                    
-                    if res:
-                        word_info = dumps(res)
-                        if is_update_db:
-                            self.logger.info(f"Update DB: {res}")
-                            self.local_dict.insert_word("en", word_info)
-                    else:
-                        word_info = ""
+                word_info = self._query_online_api("youdao", word, lang_type, is_update_db)
                         
             else:
                 word_info = self.local_dict.query_word(lang_type, word)
                 
-                if not word_info and lang_type == "en":
-                    res = search_youdao_en(word)
-                    if res:
-                        word_info = dumps(res)
-                        if is_update_db:
-                            self.logger.info(f"Update DB: {res}")
-                            self.local_dict.insert_word("en", word_info)
+                if not word_info:
+                    word_info = self._query_online_api("youdao", word, lang_type, is_update_db)
             
             return word_info
 
@@ -190,6 +225,9 @@ class WudaoServer:
             self.logger.error(f"Unknow command: {msg_data['cmd']}")
            
             return ""
+        
+    def __del__(self):
+        self.local_dict.close_db()
 
 
 __all__ = ["start_wudao_server", "WudaoServer"]

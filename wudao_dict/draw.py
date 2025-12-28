@@ -192,8 +192,8 @@ class CommandDraw:
 
             table = Table(show_header=True, box=None, padding=(0, 1, 0, 0))
             table.add_column("例句", header_style="red", no_wrap=True, style="green")
-            table.add_column("", no_wrap=True, style="yellow")
-            table.add_column("", no_wrap=True, style="white")
+            table.add_column("", style="yellow", overflow="fold")
+            table.add_column("", style="white", overflow="fold")
 
             for i, sentence in enumerate(word['sentence'], 1):
                 table.add_row(f"{i}.", sentence["en"], sentence["zh"])

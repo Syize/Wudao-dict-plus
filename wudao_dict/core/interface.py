@@ -60,4 +60,4 @@ Message = Union[QuitMessage, QueryMessage]
 
 
 __all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord",
-           "Message", "QuitMessage", "QueryMessage"]
+           "Message", "QuitMessage", "QueryMessage", "ZHDesc"]

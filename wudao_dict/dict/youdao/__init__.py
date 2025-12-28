@@ -1,1 +1,1 @@
-from .youdao import search_youdao_en
+from .youdao import *

@@ -21,9 +21,9 @@ wudao_dict.dict.local
 #   2. 对词典数据库检查哈希值防止数据库损坏。这个检查应当在试图使用词典数据库但发生错误后的下一次试图使用时检查。
 
 import sqlite3
-from json import loads, dumps
+from json import dumps, loads
 from os.path import exists
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from rich import print
 
@@ -49,6 +49,9 @@ class DictDBClient:
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_db()
+        
+    def close_db(self):
         self.db.close()
         
     def query_word(self, table: Literal["en", "zh"], word: str) -> str:
