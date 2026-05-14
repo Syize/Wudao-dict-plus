@@ -23,9 +23,25 @@ from rich import print
 from .core import LOG_FILE, QueryMessage, QuitMessage, read_socket
 
 
+def _get_server_python_executable() -> str:
+    if os.name != "nt":
+        return sys.executable
+
+    executable_dir = os.path.dirname(sys.executable)
+    executable_name = os.path.basename(sys.executable)
+
+    if executable_name.lower() == "python.exe":
+        pythonw = os.path.join(executable_dir, "pythonw.exe")
+
+        if os.path.exists(pythonw):
+            return pythonw
+
+    return sys.executable
+
+
 def _start_wudao_server():
     popen_kwargs = {
-        "args": [sys.executable, "-m", "wudao_dict.cli", "--serve"],
+        "args": [_get_server_python_executable(), "-m", "wudao_dict.cli", "--serve"],
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
@@ -33,7 +49,11 @@ def _start_wudao_server():
     }
 
     if os.name == "nt":
-        popen_kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        popen_kwargs["startupinfo"] = startupinfo
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
     else:
         popen_kwargs["start_new_session"] = True
 
