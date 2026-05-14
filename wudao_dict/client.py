@@ -10,7 +10,10 @@ wudao_dict.core.client
     WudaoClient
 """
 
+import os
 import socket
+import subprocess
+import sys
 from json import dumps
 from time import sleep
 from typing import Optional
@@ -18,11 +21,23 @@ from typing import Optional
 from rich import print
 
 from .core import LOG_FILE, QueryMessage, QuitMessage, read_socket
-from .server import start_wudao_server
 
 
 def _start_wudao_server():
-    start_wudao_server()
+    popen_kwargs = {
+        "args": [sys.executable, "-m", "wudao_dict.cli", "--serve"],
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "close_fds": True
+    }
+
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        popen_kwargs["start_new_session"] = True
+
+    subprocess.Popen(**popen_kwargs)    # type: ignore
     print("[red]正在启动后台查询服务，请稍等...[red]")
     sleep(1)
     

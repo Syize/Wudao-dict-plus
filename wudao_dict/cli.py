@@ -16,7 +16,7 @@ from rich.table import Table
 from .client import WudaoClient
 from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
-from .server import WudaoServer
+from .server import WudaoServer, start_wudao_server
 from .utils import is_alphabet
 
 
@@ -54,6 +54,10 @@ class WudaoCLI:
         
         if args.daemon:
             self.run_daemon()
+            return
+
+        if args.serve:
+            self.run_server()
             return
 
         # 处理配置选项
@@ -193,7 +197,7 @@ class WudaoCLI:
                     print('Bad Command!')
                 continue
             if inp.strip():
-                self.query(inp.strip(), conf['notename'])
+                self.query(inp.strip())
                 
     def print_global_config(self):
         table = Table()
@@ -217,6 +221,9 @@ class WudaoCLI:
             
         except KeyboardInterrupt:
             print("无道词典服务已退出")
+
+    def run_server(self):
+        start_wudao_server()
 
 
 def create_parser():
@@ -242,6 +249,7 @@ def create_parser():
     group.add_argument("-d", "--daemon", action="store_true", help="在前台运行无道词典服务(可用于DEBUG)")
     group.add_argument('-i', '--interactive', action='store_true', help='进入交互模式（未经测试，可能会出现未知错误）')
     group.add_argument('-k', '--kill', action='store_true', help='退出服务进程')
+    group.add_argument("--serve", action="store_true", help=argparse.SUPPRESS)
     
     group = parser.add_mutually_exclusive_group()
     group.add_argument("-s", "--short-once", action="store_true", help="仅本次查询启用简明模式")

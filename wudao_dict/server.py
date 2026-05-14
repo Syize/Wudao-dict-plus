@@ -12,9 +12,7 @@ wudao_dict.core.server
 """
 
 import logging
-import os
 import socket
-import sys
 from json import dumps, loads
 from traceback import format_exception
 from typing import Literal
@@ -26,49 +24,13 @@ from .dict import DictDBClient, search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
 
-def _daemonize() -> bool:
-    """
-    创建后台进程。
-    
-    如果该函数返回``True``，则表明收到该返回值的进程是父进程。
-    如果返回``False``，则表明进程是后台进程。
-
-    :return: ``True`` 或 ``False``。
-    :rtype: bool
-    """
-    if os.fork() > 0:
-        return True
-        
-    os.setsid()     # 创建新会话
-    
-    if os.fork() > 0:
-        sys.exit()  # 第一子进程退出，第二子进程成为孤儿进程
-
-    sys.stdout.flush()
-    sys.stderr.flush()
-    with open("/dev/null", "r") as f:
-        os.dup2(f.fileno(), sys.stdin.fileno())
-    with open("/dev/null", "a+") as f:
-        os.dup2(f.fileno(), sys.stdout.fileno())
-        os.dup2(f.fileno(), sys.stderr.fileno())
-        
-    return False
-
-
 def start_wudao_server(address="127.0.0.1"):
     """
-    启动无道词典的后台服务。
-    
-    在无道词典服务退出以后，本函数会调用``exit``结束服务进程。
+    在当前进程中启动无道词典服务。
     
     :param address: 无道词典后台服务的监听地址。
     :type address: str
     """
-    status = _daemonize()
-    
-    if status:
-        return
-    
     server = WudaoServer(address)
 
     try:
@@ -85,8 +47,6 @@ def start_wudao_server(address="127.0.0.1"):
 
             else:
                 server.logger.error(_line)
-    
-    exit(0)
 
 
 class WudaoServer:
