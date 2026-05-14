@@ -4,7 +4,7 @@ from typing import Dict, List, Literal, Optional, Tuple
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 from requests import get
-from requests.exceptions import ReadTimeout, Timeout
+from requests.exceptions import ConnectionError, ReadTimeout, RequestException, Timeout
 
 from wudao_dict.core import (CollinsSentenceUnit, ENPronounce, ENSentence,
                              ENWord, SentenceUnit, ZHDesc, ZHWord)
@@ -311,7 +311,7 @@ def _query_api(word: str) -> Optional[str]:
     try:
         res = get(url, headers=HEADERS, timeout=(2, 2))
     
-    except (Timeout, ReadTimeout):
+    except (Timeout, ReadTimeout, ConnectionError, RequestException):
         res = None
         
     if not res:

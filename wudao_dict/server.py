@@ -17,6 +17,7 @@ import socket
 import sys
 from json import dumps, loads
 from traceback import format_exception
+from typing import Literal
 
 from rich.logging import RichHandler
 
@@ -73,9 +74,9 @@ def start_wudao_server(address="127.0.0.1"):
     try:
         server.run()
 
-    except Exception as error:
+    except BaseException as error:
         server.logger.error("无道词典服务出现错误：")
-        for _line in format_exception(error):
+        for _line in format_exception(error, value=None, tb=None):  # type: ignore
             _line = _line.strip("\n")
 
             if "\n" in _line:
@@ -191,6 +192,26 @@ class WudaoServer:
             
         return word_info
 
+    def _query_local_with_online_fallback(self, word: str, lang_type: Literal["en", "zh"], is_update_db: bool) -> str:
+        """
+        Query local DB first, then fallback to online API when local result is missing.
+
+        :param word: Word.
+        :type word: str
+        :param lang_type: Word type.
+        :type lang_type: str
+        :param is_update_db: If update local DB.
+        :type is_update_db: bool
+        :return: Word information.
+        :rtype: str
+        """
+        word_info = self.local_dict.query_word(lang_type, word)
+
+        if not word_info:
+            word_info = self._query_online_api("youdao", word, lang_type, is_update_db)
+
+        return word_info
+
     def _generate_msg(self, msg_data: QueryMessage) -> str:
         if "cmd" not in msg_data:
             self.logger.error("Wrong message")
@@ -212,12 +233,13 @@ class WudaoServer:
             
             if is_online:
                 word_info = self._query_online_api("youdao", word, lang_type, is_update_db)
-                        
-            else:
-                word_info = self.local_dict.query_word(lang_type, word)
-                
+
                 if not word_info:
-                    word_info = self._query_online_api("youdao", word, lang_type, is_update_db)
+                    self.logger.info(f"Online query failed, fallback to local DB: {word}")
+                    word_info = self.local_dict.query_word(lang_type, word)
+
+            else:
+                word_info = self._query_local_with_online_fallback(word, lang_type, is_update_db)
             
             return word_info
 
