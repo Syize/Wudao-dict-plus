@@ -88,7 +88,7 @@ optional arguments:
 
 ## TODO
 
-- [ ] 完全的跨平台兼容 (目前不支持在 Windows 上使用)
+- [x] 完全的跨平台兼容
 - [ ] 发音功能支持 ([#4](https://github.com/Syize/Wudao-dict-plus/issues/4))
 
 ## 致谢
