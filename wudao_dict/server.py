@@ -19,7 +19,17 @@ from typing import Literal
 
 from rich.logging import RichHandler
 
-from .core import LOG_FILE, Message, QueryMessage, create_socket, delete_socket
+from .audio import ensure_pronunciation_file, play_audio
+from .core import (
+    LOG_FILE,
+    Message,
+    PlaybackResponseMessage,
+    PlayPronunciationMessage,
+    QueryMessage,
+    create_socket,
+    delete_socket,
+    load_config,
+)
 from .dict import DictDBClient, search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
@@ -96,6 +106,7 @@ class WudaoServer:
                 data = conn.recv(1024)
                 
                 msg = data.decode('utf-8').strip()
+                response = ""
                 
                 if msg:
                     msg_data: Message = loads(msg)
@@ -107,12 +118,18 @@ class WudaoServer:
                         self.logger.info("WudaoServer exits.")
                         break
 
-                    msg = self._generate_msg(msg_data)
+                    elif msg_data["cmd"] == "query":
+                        response = self._generate_msg(msg_data)
+
+                    elif msg_data["cmd"] == "play_pronunciation":
+                        response = self._handle_play_pronunciation(msg_data)
                     
                 else:
                     self.logger.warning(f"Receive empty message, please check your request: {msg}")
 
-                conn.sendall(msg.encode('utf-8'))
+                if response:
+                    conn.sendall(response.encode('utf-8'))
+                
                 conn.close()
                 
     def _query_online_api(self, api_name: str, word: str, lang_type: str, is_update_db: bool) -> str:
@@ -200,6 +217,8 @@ class WudaoServer:
 
             else:
                 word_info = self._query_local_with_online_fallback(word, lang_type, is_update_db)
+
+            self._prefetch_pronunciation_audio(word, lang_type, word_info)
             
             return word_info
 
@@ -207,6 +226,56 @@ class WudaoServer:
             self.logger.error(f"Unknow command: {msg_data['cmd']}")
            
             return ""
+
+    def _prefetch_pronunciation_audio(self, word: str, lang_type: Literal["en", "zh"], word_info: str):
+        if lang_type != "en" or not word_info:
+            return
+
+        conf = load_config()
+        if not conf["pronounce"] or not conf["audio_cache_enabled"]:
+            return
+
+        try:
+            ensure_pronunciation_file(word, conf["pronounce_accent"])
+        except Exception as error:
+            self.logger.warning(f"Failed to cache pronunciation audio for '{word}': {error}")
+
+    def _handle_play_pronunciation(self, msg_data: PlayPronunciationMessage) -> str:
+        conf = load_config()
+        
+        response: PlaybackResponseMessage = {
+            "cmd": "playback_response",
+            "status": "ok",
+            "backend": conf["audio_player_backend"],
+            "message": ""
+        }
+
+        word = msg_data["word"].strip()
+        if not word:
+            response["status"] = "play_failed"
+            response["message"] = "Word cannot be empty."
+            return dumps(response)
+
+        if not conf["pronounce"]:
+            response["status"] = "play_failed"
+            response["message"] = "Pronunciation feature is disabled."
+            return dumps(response)
+
+        if not conf["audio_cache_enabled"]:
+            response["status"] = "play_failed"
+            response["message"] = "Audio cache is disabled."
+            return dumps(response)
+
+        try:
+            audio_file = ensure_pronunciation_file(word, conf["pronounce_accent"])
+            playback_result = play_audio(audio_file)
+            self.logger.info(f"Pronunciation trigger accepted: {audio_file}")
+            response.update(playback_result)
+        except Exception as error:
+            response["status"] = "play_failed"
+            response["message"] = str(error)
+
+        return dumps(response)
         
     def __del__(self):
         self.local_dict.close_db()

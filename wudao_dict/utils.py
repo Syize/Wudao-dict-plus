@@ -18,16 +18,31 @@ from os import environ, makedirs
 from os.path import dirname, exists
 
 import zstandard as zstd
+from rich.logging import RichHandler
 
 COMPRESSOR = zstd.ZstdCompressor(level=10)
 DECOMPRESSOR = zstd.ZstdDecompressor()
 
+# Set logger for server and client.
 logger = logging.getLogger("wudao-dict")
+logger_client = logging.getLogger("wudao-dict-client")
+
 if "WUDAO_DICT_DEBUG_MODE" in environ and environ["WUDAO_DICT_DEBUG_MODE"]:
     _log_mode = logging.DEBUG
 else:
     _log_mode = logging.INFO
+
 logger.setLevel(_log_mode)
+logger_client.setLevel(_log_mode)
+
+formatter = logging.Formatter("%(name)s :: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+# use rich handler
+handler = RichHandler()
+handler.setFormatter(formatter)
+logger_client.addHandler(handler)
+
+if _log_mode == logging.DEBUG:
+    logger_client.debug("Debug mode is on.")
 
 
 def set_log_level(level: int):

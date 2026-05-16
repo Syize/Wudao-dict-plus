@@ -10,17 +10,27 @@ wudao_dict.core.client
     WudaoClient
 """
 
+import logging
 import os
 import socket
 import subprocess
 import sys
-from json import dumps
+from json import dumps, loads
 from time import sleep
 from typing import Optional
 
 from rich import print
 
-from .core import LOG_FILE, QueryMessage, QuitMessage, read_socket
+from .core import (
+    LOG_FILE,
+    PlaybackResponseMessage,
+    PlayPronunciationMessage,
+    QueryMessage,
+    QuitMessage,
+    read_socket,
+)
+
+LOGGER = logging.getLogger("wudao-dict-client")
 
 
 def _get_server_python_executable() -> str:
@@ -54,8 +64,10 @@ def _start_wudao_server():
         startupinfo.wShowWindow = subprocess.SW_HIDE
         popen_kwargs["startupinfo"] = startupinfo
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        LOGGER.debug("Start background service on Windows.")
     else:
         popen_kwargs["start_new_session"] = True
+        LOGGER.debug("Start background service on Linux/MacOS.")
 
     subprocess.Popen(**popen_kwargs)    # type: ignore
     print("[red]正在启动后台查询服务，请稍等...[red]")
@@ -75,13 +87,15 @@ def _check_server(address: str, port: int) -> Optional[socket.socket]:
     """
     client = None
     
-    for _ in range(5):
+    for i in range(5):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         try:
             client.connect((address, port))
+            break
 
         except (ConnectionRefusedError, OSError):
+            LOGGER.debug(f"Failed to connect to server {i} times.")
             client.close()
             client = None
             sleep(0.2)
@@ -102,7 +116,9 @@ class WudaoClient:
             self.port = port
 
         self._server_checked = False
-        self.client: Optional[socket.socket] = None
+
+        if self.port > 0:
+            LOGGER.debug(f"Server listened at :{self.port}.")
 
     def _check_server_internal(self, no_start=False) -> bool:
         """
@@ -120,8 +136,11 @@ class WudaoClient:
             if self.port < 0:
                 return False
 
-            self.client = _check_server(self.address, self.port)
-            return self.client is not None
+            client = _check_server(self.address, self.port)
+            if client:
+                client.close()
+                return True
+            return False
 
         if self.port < 0:
             _start_wudao_server()
@@ -132,18 +151,20 @@ class WudaoClient:
             has_call_start = False
 
         # 检查后台服务。
-        self.client = _check_server(self.address, self.port)
+        client = _check_server(self.address, self.port)
 
-        if self.client is None and not has_call_start:
+        if client is None and not has_call_start:
             # 如果连接失败且没有执行过启动函数，则尝试启动。
             _start_wudao_server()
             self.port = read_socket()
-            self.client = _check_server(self.address, self.port)
+            client = _check_server(self.address, self.port)
 
-        if self.client is None:
+        if client is None:
             print("[red]后台查询服务启动失败![red]")
             print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
             exit(1)
+
+        client.close()
 
         self._server_checked = True
 
@@ -153,12 +174,19 @@ class WudaoClient:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.client:
-            self.client.close()
+        _ = (exc_type, exc_val, exc_tb)
 
     def __del__(self):
-        if self.client:
-            self.client.close()
+        return
+
+    def _create_request_client(self) -> socket.socket:
+        self._check_server_internal()
+        client = _check_server(self.address, self.port)
+        if client is None:
+            print("[red]无法连接后端查询服务![red]")
+            print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
+            exit(1)
+        return client
 
     def close_server(self):
         """
@@ -166,8 +194,9 @@ class WudaoClient:
         """
         if self._check_server_internal(no_start=True):
             msg: QuitMessage = {"cmd": "quit"}
-            # client should not be None
-            self.client.sendall(dumps(msg).encode('utf-8'))     # type: ignore
+            client = self._create_request_client()
+            client.sendall(dumps(msg).encode('utf-8'))
+            client.close()
 
     def get_word_info(self, word: str, online=True, update_db=True) -> str:
         """
@@ -178,24 +207,88 @@ class WudaoClient:
         :return: 服务器返回的单词信息
         :rtype: str
         """
-        self._check_server_internal()
-        
         msg: QueryMessage = {
             "cmd": "query",
             "word": word,
             "online": online,
             "update_db": update_db
         }
-        self.client.sendall(dumps(msg).encode('utf-8'))     # type: ignore
-        
+        client = self._create_request_client()
+        client.sendall(dumps(msg).encode('utf-8'))
+
         server_context = b''
         while True:
-            rec = self.client.recv(512)     # type: ignore
+            rec = client.recv(512)
             if not rec:
                 break
             server_context += rec
+        client.close()
         server_context = server_context.decode('utf-8')
         return server_context
+
+    def play_pronunciation(self, word: str):
+        msg: PlayPronunciationMessage = {
+            "cmd": "play_pronunciation",
+            "word": word
+        }
+        client = self._create_request_client()
+        client.sendall(dumps(msg).encode('utf-8'))
+
+        server_context = b''
+        while True:
+            rec = client.recv(512)
+            if not rec:
+                break
+            server_context += rec
+        client.close()
+
+        if not server_context:
+            response: PlaybackResponseMessage = {
+                "cmd": "playback_response",
+                "status": "play_failed",
+                "backend": "",
+                "message": "Empty response from server."
+            }
+
+        else:
+            response = loads(server_context.decode('utf-8'))
+
+        self._handle_playback_response(response)
+
+    def _handle_playback_response(self, response: PlaybackResponseMessage):
+        if response["status"] == "ok":
+            return
+
+        status = response["status"]
+        print("[red]播放发音失败。[red]")
+
+        if status == "afplay_not_found":
+            print("[red]未找到 `afplay`。请检查 macOS 的音频环境。[red]")
+            return
+
+        if status == "linux_backend_not_found":
+            print("[red]未找到可用的 Linux 音频后端。请安装 `mpv`、`ffplay` 或 `paplay` 之一。[red]")
+            return
+
+        if status == "vlc_not_installed":
+            print("[red]Windows 平台需要额外安装 `python-vlc` 和 VLC。[red]")
+            print("[red]可以先安装 VLC，再运行 `pip install \"wudao-dict-plus[windows-audio]\"`。[red]")
+            return
+
+        if status == "vlc_path_invalid":
+            print("[red]当前 VLC 路径配置无效。请检查 `vlc_path`，必要时也配置 `vlc_lib_path`。[red]")
+            return
+
+        if status in {"backend_not_found", "backend_broken"}:
+            print(f"[red]当前音频后端不可用：{response['backend'] or 'unknown'}。[red]")
+            if response["message"]:
+                print(f"[red]{response['message']}[red]")
+            return
+
+        if response["message"]:
+            print(f"[red]{response['message']}[red]")
+        else:
+            print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
             
             
 __all__ = ["WudaoClient"]

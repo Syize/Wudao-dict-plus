@@ -59,7 +59,7 @@ from os import makedirs, remove
 from os.path import exists
 from typing import Any
 
-from platformdirs import user_config_dir, user_log_dir
+from platformdirs import user_cache_dir, user_config_dir, user_log_dir
 from rich import print
 from zstandard import ZstdDecompressor
 
@@ -71,8 +71,25 @@ CONFIG_FILE = f"{CONFIG_DIR}/config.json"
 CONFIG_SOCKET_FILE = f"{CONFIG_DIR}/socket.json"
 LOG_DIR = user_log_dir(appname=APP_NAME)
 LOG_FILE = f"{LOG_DIR}/log.txt"
+CACHE_DIR = user_cache_dir(appname=APP_NAME)
+AUDIO_CACHE_DIR = f"{CACHE_DIR}/audio"
+AUDIO_CACHE_INDEX_FILE = f"{AUDIO_CACHE_DIR}/audio_index.json"
 DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
 CREDENCE_DB_FILE = f"{CONFIG_DIR}/credence.db"
+
+DEFAULT_CONFIG = {
+        "short": False,                  # 简明模式
+        "online": True,                 # 优先使用在线释义
+        "update_db": True,               # 使用在线释义更新离线数据库
+        "pronounce": False,              # 启用发音功能
+        "pronounce_auto_play": False,    # 查询后自动播放发音
+        "pronounce_accent": "usa",       # 默认发音口音
+        "audio_cache_enabled": True,     # 启用发音缓存
+        "audio_cache_max_mb": 256,       # 发音缓存容量上限
+        "audio_player_backend": "",      # 当前固定的播放后端
+        "vlc_path": "",                  # Windows 下 VLC 可执行文件路径
+        "vlc_lib_path": ""               # Windows 下 libvlc 路径
+    }
 
 
 def load_config() -> "dict[str, Any]":
@@ -84,11 +101,7 @@ def load_config() -> "dict[str, Any]":
     """
     global CONFIG_DIR, CONFIG_FILE
     
-    default_config = {
-            "short": False,      # 简明模式
-            "online": False,
-            "update_db": True
-        }
+    default_config = DEFAULT_CONFIG.copy()
     
     if not exists(CONFIG_DIR):
         makedirs(CONFIG_DIR)
@@ -206,4 +219,4 @@ check_dict_db()
 
 __all__ = ["load_config", "save_config", "read_socket", "create_socket", "delete_socket",
            "CONFIG_DIR", "CONFIG_FILE", "CONFIG_SOCKET_FILE", "LOG_DIR", "LOG_FILE", "check_dict_db",
-           "DICT_DB_FILE"]
+           "DICT_DB_FILE", "CACHE_DIR", "AUDIO_CACHE_DIR", "AUDIO_CACHE_INDEX_FILE"]

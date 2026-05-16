@@ -1,4 +1,5 @@
 import re
+from urllib.parse import quote
 from typing import Dict, List, Literal, Optional, Tuple
 
 from bs4 import BeautifulSoup
@@ -7,7 +8,7 @@ from requests import get
 from requests.exceptions import ConnectionError, ReadTimeout, RequestException, Timeout
 
 from wudao_dict.core import (CollinsSentenceUnit, ENPronounce, ENSentence,
-                             ENWord, SentenceUnit, ZHDesc, ZHWord)
+                             ENWord, PronounceAccent, SentenceUnit, ZHDesc, ZHWord)
 
 HEADERS = {
         'Accept': 'text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, */*;q=0.8',
@@ -18,6 +19,33 @@ HEADERS = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) \
                        Chrome/48.0.2564.116 Safari/537.36'
     }
+
+PRONOUNCE_TYPE_MAP: "dict[PronounceAccent, int]" = {
+    "uk": 1,
+    "usa": 2
+}
+
+
+def get_youdao_pronunciation_audio_url(word: str, accent: PronounceAccent) -> str:
+    """
+    Get pronunciation audio URL from youdao provider.
+
+    :param word: English word.
+    :type word: str
+    :param accent: Pronunciation accent.
+    :type accent: PronounceAccent
+    :return: Audio URL.
+    :rtype: str
+    """
+    normalized_word = word.strip()
+
+    if not normalized_word:
+        raise ValueError("Word cannot be empty.")
+
+    audio_type = PRONOUNCE_TYPE_MAP[accent]
+    encoded_word = quote(normalized_word)
+
+    return f"http://dict.youdao.com/dictvoice?audio={encoded_word}&type={audio_type}"
 
 
 def _get_pron_en(html: BeautifulSoup) -> ENPronounce:
@@ -423,4 +451,4 @@ def search_youdao_zh(word: str) -> Optional[ZHWord]:
     }
     
     
-__all__ = ["search_youdao_en", "search_youdao_zh"]
+__all__ = ["get_youdao_pronunciation_audio_url", "search_youdao_en", "search_youdao_zh"]

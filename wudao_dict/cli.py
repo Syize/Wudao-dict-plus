@@ -8,12 +8,14 @@
 
 import argparse
 import json
+import os
 import sys
+from typing import Optional
 
 from rich import print
 from rich.table import Table
 
-from .client import WudaoClient
+from .client import LOGGER, WudaoClient
 from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
 from .server import WudaoServer, start_wudao_server
@@ -27,7 +29,7 @@ class WudaoCLI:
         """初始化CLI实例"""
         self.painter = CommandDraw()
         self.conf = load_config()
-        self.client = WudaoClient()
+        self.client: Optional[WudaoClient] = None
         self._temp_config = {
             "short": False,
             "online": False
@@ -40,14 +42,9 @@ class WudaoCLI:
         Args:
             args: argparse解析后的参数对象
         """
-        if args.kill:
-            self.client.close_server()
-            return
+        config_changed = False
 
-        if args.interactive:
-            self.interaction_mode()
-            return
-        
+        # Commands that doesn't require client.
         if args.config:
             self.print_global_config()
             return
@@ -59,10 +56,8 @@ class WudaoCLI:
         if args.serve:
             self.run_server()
             return
-
-        # 处理配置选项
-        config_changed = False
         
+        # # Commands to update global config.
         if args.short:
             short_mode = True if args.short == "yes" else False
             
@@ -98,9 +93,83 @@ class WudaoCLI:
                 
             self.conf["update_db"] = update_db
             config_changed = True
+            
+        if args.pronounce:
+            is_pronounce = True if args.pronounce == "yes" else False
+            
+            if is_pronounce:
+                print("[red]发音已启用。若同时启用了发音缓存，将在查词时预下载发音[red]")
+                
+            else:
+                print("[red]发音功能已关闭[red]")
+                
+            self.conf["pronounce"] = is_pronounce
+            config_changed = True
+            
+        if args.pronounce_auto:
+            is_pronounce_auto = True if args.pronounce_auto == "yes" else False
+            
+            if is_pronounce_auto:
+                print("[red]自动发音已启用[red]")
+                
+            else:
+                print("[red]自动发音已关闭[red]")
+                
+            self.conf["pronounce_auto_play"] = is_pronounce_auto
+            config_changed = True
+            
+        if args.pronounce_accent:
+            print(f"[red]偏好发音：{args.pronounce_accent}[red]")
+                
+            self.conf["pronounce_accent"] = args.pronounce_accent
+            config_changed = True
+            
+        if args.audio_cache:
+            audio_cache = True if args.audio_cache == "yes" else False
+            
+            if audio_cache:
+                print("[red]启用发音缓存[red]")
+                
+            else:
+                print("[red]关闭发音缓存[red]")
+                
+            self.conf["audio_cache_enabled"] = audio_cache
+            config_changed = True
+            
+        if args.audio_cache_limit:
+            print(f"[red]发音缓存容量限制更改为：{args.audio_cache_limit} MB[red]")
+                
+            self.conf["audio_cache_max_mb"] = args.audio_cache_limit
+            config_changed = True
+            
+        if "vlc_path" in args and args.vlc_path:
+            print(f"[red]VLC可执行程序设置为：{args.vlc_path}[red]")
+                
+            self.conf["vlc_path"] = args.vlc_path
+            config_changed = True
+            
+        if "vlc_lib_path" in args and args.vlc_lib_path:
+            print(f"[red]libvlc路径设置为：{args.vlc_lib_path}[red]")
+                
+            self.conf["vlc_lib_path"] = args.vlc_lib_path
+            config_changed = True
 
         if config_changed:
             save_config(self.conf)
+        
+        # ======================================
+
+        # Commands that need client
+
+        self.initialize_client()
+
+        if args.kill:
+            self.client.close_server()  # type: ignore
+            return
+
+        if args.interactive:
+            self.interaction_mode()
+            return
             
         # check the one time setting
         if args.short_once:
@@ -138,7 +207,7 @@ class WudaoCLI:
 
         # 1. query on server
         word_info = ""
-        server_context = self.client.get_word_info(
+        server_context = self.client.get_word_info( # type: ignore
             word,
             online=self._temp_config["online"],
             update_db=self.conf["update_db"]
@@ -147,14 +216,23 @@ class WudaoCLI:
         if server_context:
             word_info = json.loads(server_context)
 
+        LOGGER.debug(f"Receive word info: {word_info}")
+
         # 5. draw
         if word_info:
             if is_zh:
                 self.painter.draw_zh_text(word_info, self._temp_config["short"])
             else:
                 self.painter.draw_text(word_info, self._temp_config["short"])
+                self._trigger_pronunciation(word)
         else:
             print('无法查询到相关释义')
+
+    def _trigger_pronunciation(self, word: str):
+        if not self.conf["pronounce"] or not self.conf["pronounce_auto_play"]:
+            return
+
+        self.client.play_pronunciation(word)    # type: ignore
 
     def interaction_mode(self):
         """交互模式"""
@@ -208,6 +286,16 @@ class WudaoCLI:
         table.add_row("online", "是否优先使用在线释义", "启用" if self.conf["online"] else "不启用")
         table.add_row("short", "是否启用简明模式", "启用" if self.conf["short"] else "不启用")
         table.add_row("update_db", "是否使用在线释义更新离线数据库", "启用" if self.conf["update_db"] else "不启用")
+        table.add_row("pronounce", "是否启用发音功能", "启用" if self.conf["pronounce"] else "不启用")
+        table.add_row("pronounce_auto_play", "查询后是否自动播放发音", "启用" if self.conf["pronounce_auto_play"] else "不启用")
+        table.add_row("pronounce_accent", "默认发音口音", self.conf["pronounce_accent"])
+        table.add_row("audio_cache_enabled", "是否启用发音缓存", "启用" if self.conf["audio_cache_enabled"] else "不启用")
+        table.add_row("audio_cache_max_mb", "发音缓存容量上限(MB)", str(self.conf["audio_cache_max_mb"]))
+        table.add_row("audio_player_backend", "当前固定的播放后端", self.conf["audio_player_backend"] or "自动探测")
+
+        if os.name == "nt":
+            table.add_row("vlc_path", "Windows 下 VLC 路径", self.conf["vlc_path"] or "未设置")
+            table.add_row("vlc_lib_path", "Windows 下 libvlc 路径", self.conf["vlc_lib_path"] or "未设置")
         
         print("[boldwhite]无道词典增强版全局配置[boldwhite]")
         print(table)
@@ -221,6 +309,12 @@ class WudaoCLI:
             
         except KeyboardInterrupt:
             print("无道词典服务已退出")
+
+    def initialize_client(self):
+        if self.client is not None:
+            return
+        
+        self.client = WudaoClient()
 
     def run_server(self):
         start_wudao_server()
@@ -259,7 +353,16 @@ def create_parser():
     
     parser.add_argument("--online", type=str, choices=["yes", "no"], help="是否强制优先获取在线释义，全局生效")
     parser.add_argument("--short", type=str, choices=["yes", "no"], help="是否启用简明模式，全局生效")
+    parser.add_argument("--pronounce", type=str, choices=["yes", "no"], help="是否启用发音，全局生效")
+    parser.add_argument("--pronounce-auto", type=str, choices=["yes", "no"], help="是否启用自动发音，全局生效")
+    parser.add_argument("--pronounce-accent", type=str, choices=["uk", "usa"], help="英/美式发音切换，全局生效")
+    parser.add_argument("--audio-cache", type=str, choices=["yes", "no"], help="是否启用发音缓存，全局生效")
+    parser.add_argument("--audio-cache-limit", type=int, help="设置发音缓存空间占用大小限制(大小: MB)，全局生效")
     parser.add_argument("-u", "--update", type=str, choices=["yes", "no"], help="是否使用在线释义更新离线数据库")
+
+    if os.name == "nt":
+        parser.add_argument("--vlc-path", type=str, help="VLC可执行文件路径，全局生效")
+        parser.add_argument("--vlc-lib-path", type=str, help="libvlc文件路径，全局生效")
 
     return parser
 
