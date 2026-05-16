@@ -9,11 +9,12 @@
 import argparse
 import json
 import sys
+from typing import Optional
 
 from rich import print
 from rich.table import Table
 
-from .client import WudaoClient
+from .client import LOGGER, WudaoClient
 from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
 from .server import WudaoServer, start_wudao_server
@@ -27,7 +28,7 @@ class WudaoCLI:
         """初始化CLI实例"""
         self.painter = CommandDraw()
         self.conf = load_config()
-        self.client = WudaoClient()
+        self.client: Optional[WudaoClient] = None
         self._temp_config = {
             "short": False,
             "online": False
@@ -40,14 +41,9 @@ class WudaoCLI:
         Args:
             args: argparse解析后的参数对象
         """
-        if args.kill:
-            self.client.close_server()
-            return
+        config_changed = False
 
-        if args.interactive:
-            self.interaction_mode()
-            return
-        
+        # Commands that doesn't require client.
         if args.config:
             self.print_global_config()
             return
@@ -59,10 +55,8 @@ class WudaoCLI:
         if args.serve:
             self.run_server()
             return
-
-        # 处理配置选项
-        config_changed = False
         
+        # # Commands to update global config.
         if args.short:
             short_mode = True if args.short == "yes" else False
             
@@ -101,6 +95,20 @@ class WudaoCLI:
 
         if config_changed:
             save_config(self.conf)
+        
+        # ======================================
+
+        # Commands that need client
+
+        self.initialize_client()
+
+        if args.kill:
+            self.client.close_server()  # type: ignore
+            return
+
+        if args.interactive:
+            self.interaction_mode()
+            return
             
         # check the one time setting
         if args.short_once:
@@ -138,7 +146,7 @@ class WudaoCLI:
 
         # 1. query on server
         word_info = ""
-        server_context = self.client.get_word_info(
+        server_context = self.client.get_word_info( # type: ignore
             word,
             online=self._temp_config["online"],
             update_db=self.conf["update_db"]
@@ -146,6 +154,8 @@ class WudaoCLI:
         
         if server_context:
             word_info = json.loads(server_context)
+
+        LOGGER.debug(f"Receive word info: {word_info}")
 
         # 5. draw
         if word_info:
@@ -221,6 +231,12 @@ class WudaoCLI:
             
         except KeyboardInterrupt:
             print("无道词典服务已退出")
+
+    def initialize_client(self):
+        if self.client is not None:
+            return
+        
+        self.client = WudaoClient()
 
     def run_server(self):
         start_wudao_server()

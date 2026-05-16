@@ -47,7 +47,7 @@ class ZHWord(TypedDict):
     
 class QuitMessage(TypedDict):
     cmd: Literal["quit"]
-    
+
 
 class QueryMessage(TypedDict):
     cmd: Literal["query"]

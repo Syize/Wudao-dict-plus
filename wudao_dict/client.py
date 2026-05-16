@@ -10,6 +10,7 @@ wudao_dict.core.client
     WudaoClient
 """
 
+import logging
 import os
 import socket
 import subprocess
@@ -21,6 +22,8 @@ from typing import Optional
 from rich import print
 
 from .core import LOG_FILE, QueryMessage, QuitMessage, read_socket
+
+LOGGER = logging.getLogger("wudao-dict-client")
 
 
 def _get_server_python_executable() -> str:
@@ -54,8 +57,10 @@ def _start_wudao_server():
         startupinfo.wShowWindow = subprocess.SW_HIDE
         popen_kwargs["startupinfo"] = startupinfo
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        LOGGER.debug("Start background service on Windows.")
     else:
         popen_kwargs["start_new_session"] = True
+        LOGGER.debug("Start background service on Linux/MacOS.")
 
     subprocess.Popen(**popen_kwargs)    # type: ignore
     print("[red]正在启动后台查询服务，请稍等...[red]")
@@ -75,13 +80,15 @@ def _check_server(address: str, port: int) -> Optional[socket.socket]:
     """
     client = None
     
-    for _ in range(5):
+    for i in range(5):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         
         try:
             client.connect((address, port))
+            break
 
         except (ConnectionRefusedError, OSError):
+            LOGGER.debug(f"Failed to connect to server {i} times.")
             client.close()
             client = None
             sleep(0.2)
@@ -103,6 +110,9 @@ class WudaoClient:
 
         self._server_checked = False
         self.client: Optional[socket.socket] = None
+
+        if self.port > 0:
+            LOGGER.debug(f"Server listened at :{self.port}.")
 
     def _check_server_internal(self, no_start=False) -> bool:
         """
@@ -168,6 +178,7 @@ class WudaoClient:
             msg: QuitMessage = {"cmd": "quit"}
             # client should not be None
             self.client.sendall(dumps(msg).encode('utf-8'))     # type: ignore
+            self.client.close() # type: ignore
 
     def get_word_info(self, word: str, online=True, update_db=True) -> str:
         """

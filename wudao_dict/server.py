@@ -96,6 +96,7 @@ class WudaoServer:
                 data = conn.recv(1024)
                 
                 msg = data.decode('utf-8').strip()
+                response = ""
                 
                 if msg:
                     msg_data: Message = loads(msg)
@@ -107,12 +108,14 @@ class WudaoServer:
                         self.logger.info("WudaoServer exits.")
                         break
 
-                    msg = self._generate_msg(msg_data)
+                    response = self._generate_msg(msg_data)
                     
                 else:
                     self.logger.warning(f"Receive empty message, please check your request: {msg}")
 
-                conn.sendall(msg.encode('utf-8'))
+                if response:
+                    conn.sendall(response.encode('utf-8'))
+                
                 conn.close()
                 
     def _query_online_api(self, api_name: str, word: str, lang_type: str, is_update_db: bool) -> str:
