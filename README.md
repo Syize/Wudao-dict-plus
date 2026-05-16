@@ -26,6 +26,7 @@
 |      生词本      |            暂不支持             |              支持               |
 |     自动补全     |            暂不支持             |              支持               |
 |     词条上报     |         已移除相关功能          |             已失效              |
+|     词语发音     |        支持英语单词发音           |             不支持              |
 
 ## 截图
 
@@ -41,6 +42,7 @@
 
 1. 继承自原[无道词典](https://github.com/ChestnutHeng/Wudao-dict)的离线词典数据库。
 2. 支持在线查询，并使用在线释义更新离线数据库。
+3. 支持英语单词发音播放。
 
 ## 支持的在线词典
 
@@ -53,6 +55,25 @@
 pip install wudao-dict-plus
 ```
 
+### 发音功能
+
+无道词典增强版的发音功能在不同平台上的实现略有差异，以下是对不同平台的要求。
+
+#### Windows
+
+Windows 平台的发音播放依赖于 VLC，需要自行安装 VLC 播放器，并安装可选依赖 `python-vlc`。
+
+#### Linux
+
+Linux 平台需要系统中安装以下播放器之一：
+
+- `mpv`
+- `ffmpeg`
+- `paplay`
+
+#### MacOS
+
+MacOS 平台依赖于 `afplay` 播放器，一般情况下不需要额外安装依赖。
 
 ## 使用说明
 
@@ -61,7 +82,10 @@ pip install wudao-dict-plus
 
 ```
 $ wd -h
-usage: wd [-h] [-c | -i | -k] [-s | -l] [-o] [--online {yes,no}] [--short {yes,no}] [-u {yes,no}] [word [word ...]]
+usage: wd [-h] [-c | -d | -i | -k] [-s | -l] [-o] [--online {yes,no}] [--short {yes,no}]
+          [--pronounce {yes,no}] [--pronounce-auto {yes,no}] [--pronounce-accent {uk,usa}]
+          [--audio-cache {yes,no}] [--audio-cache-limit AUDIO_CACHE_LIMIT] [-u {yes,no}]
+          [word [word ...]]
 
 无道词典增强版 - 一个简洁优雅的命令行词典
 
@@ -71,6 +95,7 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -c, --config          打印全局配置选项
+  -d, --daemon          在前台运行无道词典服务(可用于DEBUG)
   -i, --interactive     进入交互模式（未经测试，可能会出现未知错误）
   -k, --kill            退出服务进程
   -s, --short-once      仅本次查询启用简明模式
@@ -78,6 +103,15 @@ optional arguments:
   -o, --online-once     仅本次查询优先获取在线释义
   --online {yes,no}     是否强制优先获取在线释义，全局生效
   --short {yes,no}      是否启用简明模式，全局生效
+  --pronounce {yes,no}  是否启用发音，全局生效
+  --pronounce-auto {yes,no}
+                        是否启用自动发音，全局生效
+  --pronounce-accent {uk,usa}
+                        英/美式发音切换，全局生效
+  --audio-cache {yes,no}
+                        是否启用发音缓存，全局生效
+  --audio-cache-limit AUDIO_CACHE_LIMIT
+                        设置发音缓存空间占用大小限制(大小: MB)，全局生效
   -u {yes,no}, --update {yes,no}
                         是否使用在线释义更新离线数据库
 
@@ -89,7 +123,7 @@ optional arguments:
 ## TODO
 
 - [x] 完全的跨平台兼容
-- [ ] 发音功能支持 ([#4](https://github.com/Syize/Wudao-dict-plus/issues/4))
+- [x] 发音功能支持 (实验性功能，稳定性需要进一步的测试)
 
 ## 致谢
 
