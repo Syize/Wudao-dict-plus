@@ -59,7 +59,7 @@ from os import makedirs, remove
 from os.path import exists
 from typing import Any
 
-from platformdirs import user_config_dir, user_log_dir
+from platformdirs import user_cache_dir, user_config_dir, user_log_dir
 from rich import print
 from zstandard import ZstdDecompressor
 
@@ -71,6 +71,9 @@ CONFIG_FILE = f"{CONFIG_DIR}/config.json"
 CONFIG_SOCKET_FILE = f"{CONFIG_DIR}/socket.json"
 LOG_DIR = user_log_dir(appname=APP_NAME)
 LOG_FILE = f"{LOG_DIR}/log.txt"
+CACHE_DIR = user_cache_dir(appname=APP_NAME)
+AUDIO_CACHE_DIR = f"{CACHE_DIR}/audio"
+AUDIO_CACHE_INDEX_FILE = f"{AUDIO_CACHE_DIR}/audio_index.json"
 DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
 CREDENCE_DB_FILE = f"{CONFIG_DIR}/credence.db"
 
@@ -216,4 +219,4 @@ check_dict_db()
 
 __all__ = ["load_config", "save_config", "read_socket", "create_socket", "delete_socket",
            "CONFIG_DIR", "CONFIG_FILE", "CONFIG_SOCKET_FILE", "LOG_DIR", "LOG_FILE", "check_dict_db",
-           "DICT_DB_FILE"]
+           "DICT_DB_FILE", "CACHE_DIR", "AUDIO_CACHE_DIR", "AUDIO_CACHE_INDEX_FILE"]

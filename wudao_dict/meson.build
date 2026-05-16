@@ -11,5 +11,6 @@ py3.install_sources(
 )
 
 subdir('core')
+subdir('audio')
 subdir('dict')
 subdir('res')

@@ -19,7 +19,9 @@ from typing import Literal
 
 from rich.logging import RichHandler
 
+from .audio import ensure_pronunciation_file
 from .core import LOG_FILE, Message, QueryMessage, create_socket, delete_socket
+from .core import load_config
 from .dict import DictDBClient, search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
@@ -204,6 +206,8 @@ class WudaoServer:
 
             else:
                 word_info = self._query_local_with_online_fallback(word, lang_type, is_update_db)
+
+            self._prefetch_pronunciation_audio(word, lang_type, word_info)
             
             return word_info
 
@@ -211,6 +215,20 @@ class WudaoServer:
             self.logger.error(f"Unknow command: {msg_data['cmd']}")
            
             return ""
+
+    def _prefetch_pronunciation_audio(self, word: str, lang_type: Literal["en", "zh"], word_info: str):
+        if lang_type != "en" or not word_info:
+            return
+
+        conf = load_config()
+        if not conf["pronounce"] or not conf["audio_cache_enabled"]:
+            return
+
+        try:
+            audio_file = ensure_pronunciation_file(word, conf["pronounce_accent"])
+            self.logger.info(f"Cache pronunciation audio: {audio_file}")
+        except Exception as error:
+            self.logger.warning(f"Failed to cache pronunciation audio for '{word}': {error}")
         
     def __del__(self):
         self.local_dict.close_db()
