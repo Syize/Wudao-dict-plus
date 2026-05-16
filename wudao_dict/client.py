@@ -23,6 +23,7 @@ from rich import print
 
 from .core import (
     LOG_FILE,
+    PlaybackResponseMessage,
     PlayPronunciationMessage,
     QueryMessage,
     QuitMessage,
@@ -242,7 +243,7 @@ class WudaoClient:
         client.close()
 
         if not server_context:
-            response = {
+            response: PlaybackResponseMessage = {
                 "cmd": "playback_response",
                 "status": "play_failed",
                 "backend": "",
@@ -252,8 +253,42 @@ class WudaoClient:
         else:
             response = loads(server_context.decode('utf-8'))
 
-        if response["status"] != "ok":
-            print(f"[red]播放发音失败，请试着检查日志文件[red]：{LOG_FILE}")
+        self._handle_playback_response(response)
+
+    def _handle_playback_response(self, response: PlaybackResponseMessage):
+        if response["status"] == "ok":
+            return
+
+        status = response["status"]
+        print("[red]播放发音失败。[red]")
+
+        if status == "afplay_not_found":
+            print("[red]未找到 `afplay`。请检查 macOS 的音频环境。[red]")
+            return
+
+        if status == "linux_backend_not_found":
+            print("[red]未找到可用的 Linux 音频后端。请安装 `mpv`、`ffplay` 或 `paplay` 之一。[red]")
+            return
+
+        if status == "vlc_not_installed":
+            print("[red]Windows 平台需要额外安装 `python-vlc` 和 VLC。[red]")
+            # print("[red]可以先安装 VLC，再运行 `pip install \"wudao-dict-plus[windows-audio]\"`。[red]")
+            return
+
+        if status == "vlc_path_invalid":
+            print("[red]当前 VLC 路径配置无效。请检查 `vlc_path`，必要时也配置 `vlc_lib_path`。[red]")
+            return
+
+        if status in {"backend_not_found", "backend_broken"}:
+            print(f"[red]当前音频后端不可用：{response['backend'] or 'unknown'}。[red]")
+            if response["message"]:
+                print(f"[red]{response['message']}[red]")
+            return
+
+        if response["message"]:
+            print(f"[red]{response['message']}[red]")
+        else:
+            print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
             
             
 __all__ = ["WudaoClient"]

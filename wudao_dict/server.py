@@ -19,7 +19,7 @@ from typing import Literal
 
 from rich.logging import RichHandler
 
-from .audio import ensure_pronunciation_file
+from .audio import ensure_pronunciation_file, play_audio
 from .core import (
     LOG_FILE,
     Message,
@@ -258,6 +258,7 @@ class WudaoServer:
             return dumps(response)
 
         if not conf["pronounce"]:
+            response["status"] = "play_failed"
             response["message"] = "Pronunciation feature is disabled."
             return dumps(response)
 
@@ -269,7 +270,8 @@ class WudaoServer:
         try:
             audio_file = ensure_pronunciation_file(word, conf["pronounce_accent"])
             self.logger.info(f"Pronunciation trigger accepted: {audio_file}")
-            response["message"] = "Pronunciation file is ready."
+            playback_result = play_audio(audio_file)
+            response.update(playback_result)
         except Exception as error:
             response["status"] = "play_failed"
             response["message"] = str(error)
