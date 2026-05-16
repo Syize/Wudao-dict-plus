@@ -164,8 +164,15 @@ class WudaoCLI:
                 self.painter.draw_zh_text(word_info, self._temp_config["short"])
             else:
                 self.painter.draw_text(word_info, self._temp_config["short"])
+                self._trigger_pronunciation(word)
         else:
             print('无法查询到相关释义')
+
+    def _trigger_pronunciation(self, word: str):
+        if not self.conf["pronounce"] or not self.conf["pronounce_auto_play"]:
+            return
+
+        self.client.play_pronunciation(word)    # type: ignore
 
     def interaction_mode(self):
         """交互模式"""

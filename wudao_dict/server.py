@@ -20,8 +20,16 @@ from typing import Literal
 from rich.logging import RichHandler
 
 from .audio import ensure_pronunciation_file
-from .core import LOG_FILE, Message, QueryMessage, create_socket, delete_socket
-from .core import load_config
+from .core import (
+    LOG_FILE,
+    Message,
+    PlaybackResponseMessage,
+    PlayPronunciationMessage,
+    QueryMessage,
+    create_socket,
+    delete_socket,
+    load_config,
+)
 from .dict import DictDBClient, search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
@@ -112,6 +120,9 @@ class WudaoServer:
 
                     elif msg_data["cmd"] == "query":
                         response = self._generate_msg(msg_data)
+
+                    elif msg_data["cmd"] == "play_pronunciation":
+                        response = self._handle_play_pronunciation(msg_data)
                     
                 else:
                     self.logger.warning(f"Receive empty message, please check your request: {msg}")
@@ -229,6 +240,41 @@ class WudaoServer:
             self.logger.info(f"Cache pronunciation audio: {audio_file}")
         except Exception as error:
             self.logger.warning(f"Failed to cache pronunciation audio for '{word}': {error}")
+
+    def _handle_play_pronunciation(self, msg_data: PlayPronunciationMessage) -> str:
+        conf = load_config()
+        
+        response: PlaybackResponseMessage = {
+            "cmd": "playback_response",
+            "status": "ok",
+            "backend": conf["audio_player_backend"],
+            "message": ""
+        }
+
+        word = msg_data["word"].strip()
+        if not word:
+            response["status"] = "play_failed"
+            response["message"] = "Word cannot be empty."
+            return dumps(response)
+
+        if not conf["pronounce"]:
+            response["message"] = "Pronunciation feature is disabled."
+            return dumps(response)
+
+        if not conf["audio_cache_enabled"]:
+            response["status"] = "play_failed"
+            response["message"] = "Audio cache is disabled."
+            return dumps(response)
+
+        try:
+            audio_file = ensure_pronunciation_file(word, conf["pronounce_accent"])
+            self.logger.info(f"Pronunciation trigger accepted: {audio_file}")
+            response["message"] = "Pronunciation file is ready."
+        except Exception as error:
+            response["status"] = "play_failed"
+            response["message"] = str(error)
+
+        return dumps(response)
         
     def __del__(self):
         self.local_dict.close_db()
