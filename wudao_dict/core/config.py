@@ -74,6 +74,20 @@ LOG_FILE = f"{LOG_DIR}/log.txt"
 DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
 CREDENCE_DB_FILE = f"{CONFIG_DIR}/credence.db"
 
+DEFAULT_CONFIG = {
+        "short": False,                  # 简明模式
+        "online": True,                 # 优先使用在线释义
+        "update_db": True,               # 使用在线释义更新离线数据库
+        "pronounce": False,              # 启用发音功能
+        "pronounce_auto_play": False,    # 查询后自动播放发音
+        "pronounce_accent": "usa",       # 默认发音口音
+        "audio_cache_enabled": True,     # 启用发音缓存
+        "audio_cache_max_mb": 256,       # 发音缓存容量上限
+        "audio_player_backend": "",      # 当前固定的播放后端
+        "vlc_path": "",                  # Windows 下 VLC 可执行文件路径
+        "vlc_lib_path": ""               # Windows 下 libvlc 路径
+    }
+
 
 def load_config() -> "dict[str, Any]":
     """
@@ -84,11 +98,7 @@ def load_config() -> "dict[str, Any]":
     """
     global CONFIG_DIR, CONFIG_FILE
     
-    default_config = {
-            "short": False,      # 简明模式
-            "online": False,
-            "update_db": True
-        }
+    default_config = DEFAULT_CONFIG.copy()
     
     if not exists(CONFIG_DIR):
         makedirs(CONFIG_DIR)

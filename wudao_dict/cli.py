@@ -8,6 +8,7 @@
 
 import argparse
 import json
+import os
 import sys
 from typing import Optional
 
@@ -218,6 +219,16 @@ class WudaoCLI:
         table.add_row("online", "是否优先使用在线释义", "启用" if self.conf["online"] else "不启用")
         table.add_row("short", "是否启用简明模式", "启用" if self.conf["short"] else "不启用")
         table.add_row("update_db", "是否使用在线释义更新离线数据库", "启用" if self.conf["update_db"] else "不启用")
+        table.add_row("pronounce", "是否启用发音功能", "启用" if self.conf["pronounce"] else "不启用")
+        table.add_row("pronounce_auto_play", "查询后是否自动播放发音", "启用" if self.conf["pronounce_auto_play"] else "不启用")
+        table.add_row("pronounce_accent", "默认发音口音", self.conf["pronounce_accent"])
+        table.add_row("audio_cache_enabled", "是否启用发音缓存", "启用" if self.conf["audio_cache_enabled"] else "不启用")
+        table.add_row("audio_cache_max_mb", "发音缓存容量上限(MB)", str(self.conf["audio_cache_max_mb"]))
+        table.add_row("audio_player_backend", "当前固定的播放后端", self.conf["audio_player_backend"] or "自动探测")
+
+        if os.name == "nt":
+            table.add_row("vlc_path", "Windows 下 VLC 路径", self.conf["vlc_path"] or "未设置")
+            table.add_row("vlc_lib_path", "Windows 下 libvlc 路径", self.conf["vlc_lib_path"] or "未设置")
         
         print("[boldwhite]无道词典增强版全局配置[boldwhite]")
         print(table)

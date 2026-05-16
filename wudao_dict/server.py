@@ -108,7 +108,8 @@ class WudaoServer:
                         self.logger.info("WudaoServer exits.")
                         break
 
-                    response = self._generate_msg(msg_data)
+                    elif msg_data["cmd"] == "query":
+                        response = self._generate_msg(msg_data)
                     
                 else:
                     self.logger.warning(f"Receive empty message, please check your request: {msg}")

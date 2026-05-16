@@ -1,5 +1,18 @@
 from typing import Literal, TypedDict, Union
 
+PronounceAccent = Literal["uk", "usa"]
+AudioPlayerBackend = Literal["", "afplay", "mpv", "ffplay", "paplay", "vlc"]
+PronunciationPlayStatus = Literal[
+    "ok",
+    "backend_not_found",
+    "backend_broken",
+    "afplay_not_found",
+    "linux_backend_not_found",
+    "vlc_not_installed",
+    "vlc_path_invalid",
+    "play_failed"
+]
+
 
 class ENPronounce(TypedDict):
     usa: str
@@ -54,10 +67,23 @@ class QueryMessage(TypedDict):
     word: str
     online: bool
     update_db: bool
-    
-    
-Message = Union[QuitMessage, QueryMessage]
+
+
+class PlayPronunciationMessage(TypedDict):
+    cmd: Literal["play_pronunciation"]
+    word: str
+
+
+class PlaybackResponseMessage(TypedDict):
+    cmd: Literal["playback_response"]
+    status: PronunciationPlayStatus
+    backend: AudioPlayerBackend
+    message: str
+
+
+Message = Union[QuitMessage, QueryMessage, PlayPronunciationMessage]
 
 
 __all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord",
-           "Message", "QuitMessage", "QueryMessage", "ZHDesc"]
+           "AudioPlayerBackend", "Message", "PlaybackResponseMessage", "PlayPronunciationMessage",
+           "PronounceAccent", "PronunciationPlayStatus", "QuitMessage", "QueryMessage", "ZHDesc"]
