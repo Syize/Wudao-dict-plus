@@ -281,4 +281,4 @@ class WudaoServer:
         self.local_dict.close_db()
 
 
-__all__ = ["start_wudao_server", "WudaoServer"]
+__all__ = ["WudaoServer", "start_wudao_server"]

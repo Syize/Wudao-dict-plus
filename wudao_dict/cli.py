@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 无道词典命令行接口
 
@@ -59,7 +57,7 @@ class WudaoCLI:
         
         # # Commands to update global config.
         if args.short:
-            short_mode = True if args.short == "yes" else False
+            short_mode = args.short == "yes"
             
             if short_mode:
                 print('[red]简明模式已开启！[red]')
@@ -71,7 +69,7 @@ class WudaoCLI:
             config_changed = True
             
         if args.online:
-            online_mode = True if args.online == "yes" else False
+            online_mode = args.online == "yes"
             
             if online_mode:
                 print("[red]将优先使用在线释义，获取的释义会自动更新到离线数据库中。[red]")
@@ -83,7 +81,7 @@ class WudaoCLI:
             config_changed = True
             
         if args.update:
-            update_db = True if args.update == "yes" else False
+            update_db = args.update == "yes"
             
             if update_db:
                 print("[red]将使用在线释义更新离线数据库[red]")
@@ -95,7 +93,7 @@ class WudaoCLI:
             config_changed = True
             
         if args.pronounce:
-            is_pronounce = True if args.pronounce == "yes" else False
+            is_pronounce = args.pronounce == "yes"
             
             if is_pronounce:
                 print("[red]发音已启用。若同时启用了发音缓存，将在查词时预下载发音[red]")
@@ -107,7 +105,7 @@ class WudaoCLI:
             config_changed = True
             
         if args.pronounce_auto:
-            is_pronounce_auto = True if args.pronounce_auto == "yes" else False
+            is_pronounce_auto = args.pronounce_auto == "yes"
             
             if is_pronounce_auto:
                 print("[red]自动发音已启用[red]")
@@ -125,7 +123,7 @@ class WudaoCLI:
             config_changed = True
             
         if args.audio_cache:
-            audio_cache = True if args.audio_cache == "yes" else False
+            audio_cache = args.audio_cache == "yes"
             
             if audio_cache:
                 print("[red]启用发音缓存[red]")
@@ -268,7 +266,7 @@ class WudaoCLI:
                     vec = inp.split()
                     if len(vec) == 2 and vec[1]:
                         conf['notename'] = vec[1]
-                        print('生词本指定为: ./usr/%s.txt' % (vec[1]))
+                        print(f'生词本指定为: ./usr/{vec[1]}.txt')
                     else:
                         print('Bad notebook name!')
                 else:
