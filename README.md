@@ -1,6 +1,6 @@
 # 无道词典增强版
 
-![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSyize%2FWudao-dict-plus%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml) ![plat](https://img.shields.io/badge/platform-Linux/MacOS-blue.svg?style=plastic)
+![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSyize%2FWudao-dict-plus%2Frefs%2Fheads%2Fmaster%2Fpyproject.toml) ![plat](https://img.shields.io/badge/platform-Windows/Linux/MacOS-blue.svg?style=plastic)
 
 ---
 
@@ -122,8 +122,9 @@ optional arguments:
 
 ## TODO
 
-- [x] 完全的跨平台兼容
-- [x] 发音功能支持 (实验性功能，稳定性需要进一步的测试)
+- [ ] 更新最低Python支持版本
+- [ ] 更新词库
+- [ ] 更多神秘妙妙功能
 
 ## 致谢
 
