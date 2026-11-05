@@ -3,7 +3,7 @@ from json import dump, load
 from os import makedirs, remove
 from os.path import dirname, exists, getsize
 from time import time
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from ..core import AUDIO_CACHE_DIR, AUDIO_CACHE_INDEX_FILE, PronounceAccent
 
@@ -40,28 +40,34 @@ def build_audio_cache_key(provider: str, accent: PronounceAccent, word: str) -> 
     return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
 
-def get_audio_cache_path(provider: str, accent: PronounceAccent, word: str) -> Tuple[str, str]:
+def get_audio_cache_path(
+    provider: str, accent: PronounceAccent, word: str
+) -> tuple[str, str]:
     cache_key = build_audio_cache_key(provider, accent, word)
     shard = cache_key[:2]
     file_path = f"{AUDIO_CACHE_DIR}/{provider}/{accent}/{shard}/{cache_key}.mp3"
     return cache_key, file_path
 
 
-def get_cached_audio_path(provider: str, accent: PronounceAccent, word: str) -> Optional[str]:
+def get_cached_audio_path(
+    provider: str, accent: PronounceAccent, word: str
+) -> str | None:
     cache_key, cache_path = get_audio_cache_path(provider, accent, word)
     index_data = _load_audio_index()
 
     if exists(cache_path):
         now = time()
         entry = index_data.get(cache_key, {})
-        entry.update({
-            "provider": provider,
-            "accent": accent,
-            "word": normalize_audio_word(word),
-            "path": cache_path,
-            "last_accessed_at": now,
-            "file_size": _get_file_size(cache_path)
-        })
+        entry.update(
+            {
+                "provider": provider,
+                "accent": accent,
+                "word": normalize_audio_word(word),
+                "path": cache_path,
+                "last_accessed_at": now,
+                "file_size": _get_file_size(cache_path),
+            }
+        )
         if "created_at" not in entry:
             entry["created_at"] = now
         index_data[cache_key] = entry
@@ -75,7 +81,9 @@ def get_cached_audio_path(provider: str, accent: PronounceAccent, word: str) -> 
     return None
 
 
-def update_audio_cache_index(provider: str, accent: PronounceAccent, word: str, file_path: str):
+def update_audio_cache_index(
+    provider: str, accent: PronounceAccent, word: str, file_path: str
+):
     cache_key, _ = get_audio_cache_path(provider, accent, word)
     index_data = _load_audio_index()
     now = time()
@@ -86,7 +94,7 @@ def update_audio_cache_index(provider: str, accent: PronounceAccent, word: str, 
         "path": file_path,
         "created_at": now,
         "last_accessed_at": now,
-        "file_size": _get_file_size(file_path)
+        "file_size": _get_file_size(file_path),
     }
     _save_audio_index(index_data)
 
@@ -120,7 +128,9 @@ def cleanup_audio_cache(max_cache_bytes: int):
         _save_audio_index(index_data)
         return
 
-    sorted_items = sorted(index_data.items(), key=lambda item: float(item[1].get("last_accessed_at", 0)))
+    sorted_items = sorted(
+        index_data.items(), key=lambda item: float(item[1].get("last_accessed_at", 0))
+    )
 
     for cache_key, entry in sorted_items:
         if total_size <= max_cache_bytes:
@@ -152,5 +162,5 @@ __all__ = [
     "get_audio_cache_path",
     "get_cached_audio_path",
     "normalize_audio_word",
-    "update_audio_cache_index"
+    "update_audio_cache_index",
 ]

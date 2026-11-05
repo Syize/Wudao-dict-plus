@@ -8,7 +8,7 @@ wudao_dict.dict.local
 
 .. autosummary::
     :toctree: generated/
-    
+
     DictDBClient
     query_word_en
     query_word_zh
@@ -23,7 +23,7 @@ wudao_dict.dict.local
 import sqlite3
 from json import dumps, loads
 from os.path import exists
-from typing import Literal, Optional
+from typing import Literal
 
 from rich import print
 
@@ -34,26 +34,29 @@ class DictDBClient:
     """
     词典数据库查询和写入客户端。
     """
-    def __init__(self, db_path: Optional[str] = None):
+
+    def __init__(self, db_path: str | None = None):
         if db_path is None:
             db_path = DICT_DB_FILE
-            
+
         if not exists(db_path):
             print(f"[red]找不到词典数据库，请检查数据库文件是否存在：[red]{db_path}")
-            raise FileNotFoundError(f"找不到词典数据库，请检查数据库文件是否存在：{db_path}")
+            raise FileNotFoundError(
+                f"找不到词典数据库，请检查数据库文件是否存在：{db_path}"
+            )
 
         self.db = sqlite3.connect(db_path)
         self.db_cur = self.db.cursor()
-        
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close_db()
-        
+
     def close_db(self):
         self.db.close()
-        
+
     def query_word(self, table: Literal["en", "zh"], word: str) -> str:
         """查询词语的释义。
 
@@ -66,14 +69,14 @@ class DictDBClient:
         """
         if table == "en":
             return query_word_en(self.db_cur, word)
-        
+
         elif table == "zh":
             return query_word_zh(self.db_cur, word)
-        
+
         else:
             print(f"[red]未知的语言类型[red]：{table}")
             raise ValueError(f"未知的语言类型：{table}")
-        
+
     def insert_word(self, table: Literal["en", "zh"], word_info: str):
         """
         向词典数据库插入新的词语以更新数据库。
@@ -85,14 +88,14 @@ class DictDBClient:
         """
         if table == "en":
             insert_word_en(self.db_cur, word_info)
-        
+
         elif table == "zh":
             insert_word_zh(self.db_cur, word_info)
-        
+
         else:
             print(f"[red]未知的语言类型[red]：{table}")
             raise ValueError(f"未知的语言类型：{table}")
-        
+
         self.db.commit()
 
 
@@ -111,20 +114,20 @@ def query_word_en(db_cur: sqlite3.Cursor, word: str) -> str:
         SELECT pronunciation, paraphrase, rank, pattern, sentence
         FROM en WHERE word=?
     """
-    row = db_cur.execute(db_cmd, (word, )).fetchone()
-    
+    row = db_cur.execute(db_cmd, (word,)).fetchone()
+
     if not row:
         return ""
-    
+
     result: ENWord = {
-        'word': word,
-        'pronunciation': loads(row[0]),
-        'paraphrase': loads(row[1]),
-        'rank': row[2],
-        'pattern': row[3],
-        'sentence': loads(row[4])
+        "word": word,
+        "pronunciation": loads(row[0]),
+        "paraphrase": loads(row[1]),
+        "rank": row[2],
+        "pattern": row[3],
+        "sentence": loads(row[4]),
     }
-    
+
     return dumps(result)
 
 
@@ -143,8 +146,8 @@ def query_word_zh(db_cur: sqlite3.Cursor, word: str) -> str:
         SELECT pronunciation, paraphrase, desc, sentence
         FROM zh WHERE word=?
     """
-    row = db_cur.execute(db_cmd, (word, )).fetchone()
-    
+    row = db_cur.execute(db_cmd, (word,)).fetchone()
+
     if not row:
         return ""
 
@@ -155,15 +158,15 @@ def query_word_zh(db_cur: sqlite3.Cursor, word: str) -> str:
     paraphrase = {} if paraphrase == "" else loads(paraphrase)
     desc = [] if desc == "" else loads(desc)
     sentence = [] if sentence == "" else loads(sentence)
-    
+
     result: ZHWord = {
-        'word': word,
-        'pronunciation': row[0],
-        'paraphrase': paraphrase,
-        'desc': desc,
-        'sentence': sentence
+        "word": word,
+        "pronunciation": row[0],
+        "paraphrase": paraphrase,
+        "desc": desc,
+        "sentence": sentence,
     }
-    
+
     return dumps(result)
 
 
@@ -181,14 +184,17 @@ def insert_word_en(db_cur: sqlite3.Cursor, word_info: str):
             (word, pronunciation, paraphrase, rank, pattern, sentence)
             VALUES (?, ?, ?, ?, ?, ?)
             """
-            
+
     info_value: ENWord = loads(word_info)
     values = (
-        info_value["word"], dumps(info_value["pronunciation"], ensure_ascii=False),
-        dumps(info_value["paraphrase"], ensure_ascii=False), info_value["rank"], info_value["pattern"],
-        dumps(info_value["sentence"], ensure_ascii=False)
+        info_value["word"],
+        dumps(info_value["pronunciation"], ensure_ascii=False),
+        dumps(info_value["paraphrase"], ensure_ascii=False),
+        info_value["rank"],
+        info_value["pattern"],
+        dumps(info_value["sentence"], ensure_ascii=False),
     )
-    
+
     db_cur.execute(db_cmd, values)
 
 
@@ -208,11 +214,20 @@ def insert_word_zh(db_cur: sqlite3.Cursor, word_info: str):
             """
     info_value: ZHWord = loads(word_info)
     values = (
-        info_value["word"], info_value["pronunciation"],
-        info_value["paraphrase"], info_value["desc"], info_value["sentence"]
+        info_value["word"],
+        info_value["pronunciation"],
+        info_value["paraphrase"],
+        info_value["desc"],
+        info_value["sentence"],
     )
-    
+
     db_cur.execute(db_cmd, values)
 
 
-__all__ = ["DictDBClient", "query_word_en", "query_word_zh", "insert_word_en", "insert_word_zh"]
+__all__ = [
+    "DictDBClient",
+    "insert_word_en",
+    "insert_word_zh",
+    "query_word_en",
+    "query_word_zh",
+]

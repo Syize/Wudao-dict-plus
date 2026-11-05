@@ -7,7 +7,7 @@ name = "wudao-dict-plus"
 version = "3.6.0"
 description = "无道词典增强版。对原有的无道词典的功能进行了修复和增强。"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 maintainers = [{ name = "Syize", email = "syizeliu@gmail.com" }]
 keywords = ["dictionary", "command-line"]
 dependencies = [

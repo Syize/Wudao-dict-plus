@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import sys
@@ -5,12 +6,13 @@ import threading
 from importlib import import_module
 from os.path import dirname, exists, join
 from shutil import which
-from typing import Any, List
+from typing import Any
 
 from ..core import AudioPlayerBackend, PlaybackResponseMessage, load_config, save_config
 
 _LINUX_AUDIO_BACKENDS = ("mpv", "ffplay", "paplay")
 _ACTIVE_VLC_PLAYERS: "list[tuple[Any, Any]]" = []
+LOGGER = logging.getLogger("wudao-dict")
 
 
 def play_audio(file_path: str) -> PlaybackResponseMessage:
@@ -25,10 +27,11 @@ def play_audio(file_path: str) -> PlaybackResponseMessage:
 
 def _play_audio_macos(file_path: str) -> PlaybackResponseMessage:
     if which("afplay") is None:
+        LOGGER.error("Cannot find `afplay`. Please check your macOS audio environment.")
         return _playback_response(
             status="afplay_not_found",
             backend="",
-            message="Cannot find `afplay`. Please check your macOS audio environment."
+            message="Cannot find `afplay`. Please check your macOS audio environment.",
         )
 
     _save_audio_backend("afplay")
@@ -55,28 +58,34 @@ def _play_audio_linux(file_path: str) -> PlaybackResponseMessage:
             _save_audio_backend(candidate)
             return response
 
+    LOGGER.error(
+        "Cannot find an available Linux audio backend. Please install `mpv`, `ffplay`, or `paplay`."
+    )
     return _playback_response(
         status="linux_backend_not_found",
         backend="",
-        message="Cannot find an available Linux audio backend. Please install `mpv`, `ffplay`, or `paplay`."
+        message="Cannot find an available Linux audio backend. Please install `mpv`, `ffplay`, or `paplay`.",
     )
 
 
-def _play_audio_with_linux_backend(backend: str, file_path: str) -> PlaybackResponseMessage:
+def _play_audio_with_linux_backend(
+    backend: str, file_path: str
+) -> PlaybackResponseMessage:
     if which(backend) is None:
         return _playback_response(
             status="backend_not_found",
             backend=backend,  # type: ignore[arg-type]
-            message=f"Cannot find audio backend `{backend}`."
+            message=f"Cannot find audio backend `{backend}`.",
         )
 
     try:
         _spawn_audio_process(_build_linux_audio_command(backend, file_path))
     except (FileNotFoundError, OSError) as error:
+        LOGGER.error(f"Failed to start audio backend `{backend}`: {error}")
         return _playback_response(
             status="backend_broken",
             backend=backend,  # type: ignore[arg-type]
-            message=f"Failed to start audio backend `{backend}`: {error}"
+            message=f"Failed to start audio backend `{backend}`: {error}",
         )
 
     return _playback_response("ok", backend, "Pronunciation playback started.")  # type: ignore[arg-type]
@@ -87,25 +96,30 @@ def _play_audio_windows(file_path: str) -> PlaybackResponseMessage:
     vlc_path = conf["vlc_path"].strip()
 
     if not vlc_path or not exists(vlc_path):
+        LOGGER.error("VLC path is not configured or invalid.")
         return _playback_response(
             status="vlc_path_invalid",
             backend="",
-            message="VLC path is not configured or invalid."
+            message="VLC path is not configured or invalid.",
         )
 
     try:
         vlc_module = _import_vlc_module(vlc_path, conf["vlc_lib_path"].strip())
     except ImportError:
+        LOGGER.error(
+            "python-vlc is not installed. Please install `python-vlc` and VLC."
+        )
         return _playback_response(
             status="vlc_not_installed",
             backend="",
-            message="python-vlc is not installed. Please install `python-vlc` and VLC."
+            message="python-vlc is not installed. Please install `python-vlc` and VLC.",
         )
     except (FileNotFoundError, OSError) as error:
+        LOGGER.error(f"Invalid VLC configuration: {error}")
         return _playback_response(
             status="vlc_path_invalid",
             backend="",
-            message=f"Invalid VLC configuration: {error}"
+            message=f"Invalid VLC configuration: {error}",
         )
 
     try:
@@ -115,11 +129,12 @@ def _play_audio_windows(file_path: str) -> PlaybackResponseMessage:
         player.set_media(media)
         player.play()
         _keep_vlc_player_alive(instance, player, vlc_module)
-    except Exception as error:
+    except vlc_module.VLCException as error:
+        LOGGER.error(f"Failed to start VLC playback: {error}")
         return _playback_response(
             status="play_failed",
             backend="vlc",
-            message=f"Failed to start VLC playback: {error}"
+            message=f"Failed to start VLC playback: {error}",
         )
 
     _save_audio_backend("vlc")
@@ -129,16 +144,18 @@ def _play_audio_windows(file_path: str) -> PlaybackResponseMessage:
 def _import_vlc_module(vlc_path: str, vlc_lib_path: str):
     if vlc_lib_path:
         if not exists(vlc_lib_path):
+            LOGGER.error(f"Cannot find libvlc path: {vlc_lib_path}")
             raise FileNotFoundError(f"Cannot find libvlc path: {vlc_lib_path}")
         if hasattr(os, "add_dll_directory"):
             os.add_dll_directory(vlc_lib_path)  # type: ignore
 
     vlc_dir = dirname(vlc_path)
     if not exists(vlc_dir):
+        LOGGER.error(f"Cannot find VLC directory: {vlc_dir}")
         raise FileNotFoundError(f"Cannot find VLC directory: {vlc_dir}")
 
     if hasattr(os, "add_dll_directory"):
-        os.add_dll_directory(vlc_dir)   # type: ignore
+        os.add_dll_directory(vlc_dir)  # type: ignore
 
     plugins_dir = join(vlc_dir, "plugins")
     if exists(plugins_dir):
@@ -159,7 +176,7 @@ def _keep_vlc_player_alive(instance: Any, player: Any, vlc_module: Any):
             end_states = {
                 vlc_module.State.Ended,
                 vlc_module.State.Error,
-                vlc_module.State.Stopped
+                vlc_module.State.Stopped,
             }
             while True:
                 state = player.get_state()
@@ -171,25 +188,28 @@ def _keep_vlc_player_alive(instance: Any, player: Any, vlc_module: Any):
         finally:
             try:
                 player.stop()
-            except Exception:
-                pass
+            except vlc_module.VLCException:
+                LOGGER.warning("Failed to stop VLC player.")
+
             try:
                 player.release()
-            except Exception:
-                pass
+            except vlc_module.VLCException:
+                LOGGER.warning("Failed to release VLC player.")
+
             try:
                 instance.release()
-            except Exception:
-                pass
+            except vlc_module.VLCException:
+                LOGGER.warning("Failed to release VLC instance.")
+
             try:
                 _ACTIVE_VLC_PLAYERS.remove((instance, player))
             except ValueError:
-                pass
+                LOGGER.warning("Failed to delete VLC instance.")
 
     threading.Thread(target=_cleanup, daemon=True).start()
 
 
-def _build_linux_audio_command(backend: str, file_path: str) -> List[str]:
+def _build_linux_audio_command(backend: str, file_path: str) -> list[str]:
     if backend == "mpv":
         return ["mpv", "--no-video", "--really-quiet", file_path]
     if backend == "ffplay":
@@ -197,13 +217,13 @@ def _build_linux_audio_command(backend: str, file_path: str) -> List[str]:
     return ["paplay", file_path]
 
 
-def _spawn_audio_process(cmd: List[str]):
+def _spawn_audio_process(cmd: list[str]):
     popen_kwargs = {
         "args": cmd,
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
-        "close_fds": True
+        "close_fds": True,
     }
 
     if os.name != "nt":
@@ -221,12 +241,14 @@ def _save_audio_backend(backend: AudioPlayerBackend):
     save_config(conf)
 
 
-def _playback_response(status: str, backend: AudioPlayerBackend, message: str) -> PlaybackResponseMessage:
+def _playback_response(
+    status: str, backend: AudioPlayerBackend, message: str
+) -> PlaybackResponseMessage:
     return {
         "cmd": "playback_response",
         "status": status,  # type: ignore[typeddict-item]
         "backend": backend,
-        "message": message
+        "message": message,
     }
 
 

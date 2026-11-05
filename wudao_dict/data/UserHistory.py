@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import json
 import os
@@ -34,7 +33,7 @@ class UserHistory:
 
         # Load file
         with open(self.LATEST_FILE_NAME, 'r') as f:
-            self.latest_word = [v.strip() for v in f.readlines()]
+            self.latest_word = [v.strip() for v in f]
         with open(self.ONLINE_CACHE, 'r') as f:
             self.cache_dic = json.load(f)
         with open(self.DICT_FILE_NAME, 'r') as f:
@@ -67,8 +66,7 @@ class UserHistory:
             self.latest_word.pop(0)
             self.latest_word.append(word)
         with open(self.LATEST_FILE_NAME, 'w') as f:
-            for v in self.latest_word:
-                f.write(v + '\n')
+            f.writelines(v + '\n' for v in self.latest_word)
 
 
     # add word info to online cache

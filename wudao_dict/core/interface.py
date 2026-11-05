@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, Union
+from typing import Literal, TypedDict
 
 PronounceAccent = Literal["uk", "usa"]
 AudioPlayerBackend = Literal["", "afplay", "mpv", "ffplay", "paplay", "vlc"]
@@ -10,7 +10,7 @@ PronunciationPlayStatus = Literal[
     "linux_backend_not_found",
     "vlc_not_installed",
     "vlc_path_invalid",
-    "play_failed"
+    "play_failed",
 ]
 
 
@@ -33,7 +33,7 @@ class CollinsSentenceUnit(TypedDict):
 
 class ENSentence(TypedDict):
     is_collins: bool
-    sentences: list
+    sentences: list[CollinsSentenceUnit] | list[SentenceUnit]
 
 
 class ENWord(TypedDict):
@@ -56,8 +56,8 @@ class ZHWord(TypedDict):
     paraphrase: "dict[str, list[str]]"
     desc: "list[ZHDesc]"
     sentence: "list[SentenceUnit]"
-    
-    
+
+
 class QuitMessage(TypedDict):
     cmd: Literal["quit"]
 
@@ -81,9 +81,23 @@ class PlaybackResponseMessage(TypedDict):
     message: str
 
 
-Message = Union[QuitMessage, QueryMessage, PlayPronunciationMessage]
+Message = QuitMessage | QueryMessage | PlayPronunciationMessage
 
 
-__all__ = ["ENPronounce", "SentenceUnit", "CollinsSentenceUnit", "ENSentence", "ENWord", "ZHWord",
-           "AudioPlayerBackend", "Message", "PlaybackResponseMessage", "PlayPronunciationMessage",
-           "PronounceAccent", "PronunciationPlayStatus", "QuitMessage", "QueryMessage", "ZHDesc"]
+__all__ = [
+    "AudioPlayerBackend",
+    "CollinsSentenceUnit",
+    "ENPronounce",
+    "ENSentence",
+    "ENWord",
+    "Message",
+    "PlayPronunciationMessage",
+    "PlaybackResponseMessage",
+    "PronounceAccent",
+    "PronunciationPlayStatus",
+    "QueryMessage",
+    "QuitMessage",
+    "SentenceUnit",
+    "ZHDesc",
+    "ZHWord",
+]

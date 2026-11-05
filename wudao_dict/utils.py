@@ -6,7 +6,7 @@ wudao_dict.utils
 
 .. autosummary::
     :toctree: generated/
-    
+
     set_log_level
     set_log_file
     compress
@@ -61,10 +61,14 @@ def set_log_level(level: int):
 class SizeAndAgeRotatingFileHandler(RotatingFileHandler):
     """按大小轮转日志，并删除超过保留期的轮转文件。"""
 
-    def __init__(self, filename: str, max_bytes: int, backup_count: int, max_age_days: int):
+    def __init__(
+        self, filename: str, max_bytes: int, backup_count: int, max_age_days: int
+    ):
         self.max_age_seconds = max_age_days * 24 * 60 * 60
         self._next_cleanup_at = 0.0
-        super().__init__(filename, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8")
+        super().__init__(
+            filename, maxBytes=max_bytes, backupCount=backup_count, encoding="utf-8"
+        )
         self._cleanup_expired_backups()
 
     def emit(self, record):
@@ -85,8 +89,12 @@ class SizeAndAgeRotatingFileHandler(RotatingFileHandler):
 
         try:
             for backup_path in log_path.parent.glob(f"{log_path.name}.*"):
-                suffix = backup_path.name[len(prefix):]
-                if suffix.isdigit() and backup_path.is_file() and backup_path.stat().st_mtime < expiry_time:
+                suffix = backup_path.name[len(prefix) :]
+                if (
+                    suffix.isdigit()
+                    and backup_path.is_file()
+                    and backup_path.stat().st_mtime < expiry_time
+                ):
                     backup_path.unlink()
         except OSError:
             # 日志清理失败不应影响词典服务的正常运行；下次写入时会重试。
@@ -117,11 +125,19 @@ def set_log_file(
         makedirs(dir_path)
 
     absolute_path = str(Path(file_path).resolve())
-    if any(getattr(handler, "baseFilename", None) == absolute_path for handler in logger.handlers):
+    if any(
+        getattr(handler, "baseFilename", None) == absolute_path
+        for handler in logger.handlers
+    ):
         return
 
-    file_handler = SizeAndAgeRotatingFileHandler(file_path, max_bytes, backup_count, max_age_days)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s :: %(message)s", datefmt="%m-%d %H:%M:%S")
+    file_handler = SizeAndAgeRotatingFileHandler(
+        file_path, max_bytes, backup_count, max_age_days
+    )
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s :: %(message)s",
+        datefmt="%m-%d %H:%M:%S",
+    )
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
@@ -149,7 +165,11 @@ def decompress(data: bytes) -> bytes:
 
 
 def is_alphabet(uchar):
-    return ('\u0041' <= uchar <= '\u005a') or ('\u0061' <= uchar <= '\u007a') or uchar == '\''
+    return (
+        ("\u0041" <= uchar <= "\u005a")
+        or ("\u0061" <= uchar <= "\u007a")
+        or uchar == "'"
+    )
 
 
 __all__ = ["compress", "decompress", "is_alphabet", "set_log_file", "set_log_level"]

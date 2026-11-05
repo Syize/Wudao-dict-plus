@@ -6,7 +6,7 @@ wudao_dict.core.client
 
 .. autosummary::
     :toctree: generated/
-    
+
     WudaoClient
 """
 
@@ -17,7 +17,6 @@ import subprocess
 import sys
 from json import dumps, loads
 from time import sleep
-from typing import Optional
 
 from rich import print
 
@@ -55,7 +54,7 @@ def _start_wudao_server():
         "stdin": subprocess.DEVNULL,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
-        "close_fds": True
+        "close_fds": True,
     }
 
     if os.name == "nt":
@@ -63,18 +62,20 @@ def _start_wudao_server():
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = subprocess.SW_HIDE
         popen_kwargs["startupinfo"] = startupinfo
-        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        popen_kwargs["creationflags"] = (
+            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        )
         LOGGER.debug("Start background service on Windows.")
     else:
         popen_kwargs["start_new_session"] = True
         LOGGER.debug("Start background service on Linux/MacOS.")
 
-    subprocess.Popen(**popen_kwargs)    # type: ignore
+    subprocess.Popen(**popen_kwargs)  # type: ignore
     print("[red]正在启动后台查询服务，请稍等...[red]")
     sleep(1)
-    
-    
-def _check_server(address: str, port: int) -> Optional[socket.socket]:
+
+
+def _check_server(address: str, port: int) -> socket.socket | None:
     """
     Check if the server running and return connected socket.
 
@@ -86,10 +87,10 @@ def _check_server(address: str, port: int) -> Optional[socket.socket]:
     :rtype: Optional[socket.socket]
     """
     client = None
-    
+
     for i in range(5):
         client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
+
         try:
             client.connect((address, port))
             break
@@ -107,7 +108,8 @@ class WudaoClient:
     """
     无道词典客户端。
     """
-    def __init__(self, address="127.0.0.1", port: Optional[int] = None):
+
+    def __init__(self, address="127.0.0.1", port: int | None = None):
         self.address = address
 
         if port is None:
@@ -162,14 +164,14 @@ class WudaoClient:
         if client is None:
             print("[red]后台查询服务启动失败![red]")
             print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
-            exit(1)
+            sys.exit(1)
 
         client.close()
 
         self._server_checked = True
 
         return True
-        
+
     def __enter__(self):
         return self
 
@@ -185,7 +187,7 @@ class WudaoClient:
         if client is None:
             print("[red]无法连接后端查询服务![red]")
             print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
-            exit(1)
+            sys.exit(1)
         return client
 
     def close_server(self):
@@ -195,7 +197,7 @@ class WudaoClient:
         if self._check_server_internal(no_start=True):
             msg: QuitMessage = {"cmd": "quit"}
             client = self._create_request_client()
-            client.sendall(dumps(msg).encode('utf-8'))
+            client.sendall(dumps(msg).encode("utf-8"))
             client.close()
 
     def get_word_info(self, word: str, online=True, update_db=True) -> str:
@@ -211,30 +213,27 @@ class WudaoClient:
             "cmd": "query",
             "word": word,
             "online": online,
-            "update_db": update_db
+            "update_db": update_db,
         }
         client = self._create_request_client()
-        client.sendall(dumps(msg).encode('utf-8'))
+        client.sendall(dumps(msg).encode("utf-8"))
 
-        server_context = b''
+        server_context = b""
         while True:
             rec = client.recv(512)
             if not rec:
                 break
             server_context += rec
         client.close()
-        server_context = server_context.decode('utf-8')
+        server_context = server_context.decode("utf-8")
         return server_context
 
     def play_pronunciation(self, word: str):
-        msg: PlayPronunciationMessage = {
-            "cmd": "play_pronunciation",
-            "word": word
-        }
+        msg: PlayPronunciationMessage = {"cmd": "play_pronunciation", "word": word}
         client = self._create_request_client()
-        client.sendall(dumps(msg).encode('utf-8'))
+        client.sendall(dumps(msg).encode("utf-8"))
 
-        server_context = b''
+        server_context = b""
         while True:
             rec = client.recv(512)
             if not rec:
@@ -247,11 +246,11 @@ class WudaoClient:
                 "cmd": "playback_response",
                 "status": "play_failed",
                 "backend": "",
-                "message": "Empty response from server."
+                "message": "Empty response from server.",
             }
 
         else:
-            response = loads(server_context.decode('utf-8'))
+            response = loads(server_context.decode("utf-8"))
 
         self._handle_playback_response(response)
 
@@ -267,16 +266,22 @@ class WudaoClient:
             return
 
         if status == "linux_backend_not_found":
-            print("[red]未找到可用的 Linux 音频后端。请安装 `mpv`、`ffplay` 或 `paplay` 之一。[red]")
+            print(
+                "[red]未找到可用的 Linux 音频后端。请安装 `mpv`、`ffplay` 或 `paplay` 之一。[red]"
+            )
             return
 
         if status == "vlc_not_installed":
             print("[red]Windows 平台需要额外安装 `python-vlc` 和 VLC。[red]")
-            print("[red]可以先安装 VLC，再运行 `pip install \"wudao-dict-plus[windows-audio]\"`。[red]")
+            print(
+                '[red]可以先安装 VLC，再运行 `pip install "wudao-dict-plus[windows-audio]"`。[red]'
+            )
             return
 
         if status == "vlc_path_invalid":
-            print("[red]当前 VLC 路径配置无效。请检查 `vlc_path`，必要时也配置 `vlc_lib_path`。[red]")
+            print(
+                "[red]当前 VLC 路径配置无效。请检查 `vlc_path`，必要时也配置 `vlc_lib_path`。[red]"
+            )
             return
 
         if status in {"backend_not_found", "backend_broken"}:
@@ -289,6 +294,6 @@ class WudaoClient:
             print(f"[red]{response['message']}[red]")
         else:
             print(f"[red]请试着检查日志文件[red]：{LOG_FILE}")
-            
-            
+
+
 __all__ = ["WudaoClient"]

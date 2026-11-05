@@ -17,7 +17,9 @@ from .cache import (
 LOGGER = logging.getLogger("wudao-dict")
 
 
-def ensure_pronunciation_file(word: str, accent: PronounceAccent, provider: str = "youdao") -> str:
+def ensure_pronunciation_file(
+    word: str, accent: PronounceAccent, provider: str = "youdao"
+) -> str:
     cached_path = get_cached_audio_path(provider, accent, word)
     if cached_path:
         return cached_path
@@ -46,10 +48,14 @@ def _download_audio_file(url: str, file_path: str):
     try:
         response = get(url, stream=True, timeout=(2, 5))
     except (Timeout, ReadTimeout, ConnectionError, RequestException) as error:
-        raise RuntimeError(f"Failed to download pronunciation audio: {error}") from error
+        raise RuntimeError(
+            f"Failed to download pronunciation audio: {error}"
+        ) from error
 
     if response.status_code != 200:
-        raise RuntimeError(f"Failed to download pronunciation audio: {response.status_code}")
+        raise RuntimeError(
+            f"Failed to download pronunciation audio: {response.status_code}"
+        )
 
     with open(file_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=8192):
