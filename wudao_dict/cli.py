@@ -10,10 +10,15 @@ import os
 import sys
 
 from prompt_toolkit import PromptSession
-from prompt_toolkit.completion import DynamicCompleter, WordCompleter
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import radiolist_dialog
+from prompt_toolkit.application import Application
+from prompt_toolkit.completion import WordCompleter, merge_completers
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import HSplit, Layout, Window
+from prompt_toolkit.styles import Style
+from prompt_toolkit.widgets import Frame, Label, RadioList
 from rich import print
+from rich import box
+from rich.panel import Panel
 from rich.table import Table
 
 from .client import LOGGER, WudaoClient
@@ -21,6 +26,30 @@ from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
 from .server import WudaoServer, start_wudao_server
 from .utils import is_alphabet
+
+
+INTERACTION_COMMANDS = {
+    ":help": "显示交互模式帮助",
+    ":history": "查看查询历史",
+    ":short": "切换简明模式",
+    ":long": "切换完整模式",
+    ":quit": "退出交互模式",
+}
+
+HISTORY_STYLE = Style.from_dict(
+    {
+        "history-frame": "bg:#172033 #e2e8f0",
+        "frame.border": "#38bdf8",
+        "frame.label": "bold #67e8f9",
+        "history-heading": "bold #f8fafc",
+        "history-subheading": "#94a3b8",
+        "history-footer": "bg:#0f172a #cbd5e1",
+        "radio-list": "bg:#172033",
+        "radio": "#cbd5e1",
+        "radio-selected": "bg:#334155 #f8fafc",
+        "radio-checked": "bold #fbbf24",
+    }
+)
 
 
 class WudaoCLI:
@@ -240,46 +269,62 @@ class WudaoCLI:
     def interaction_mode(self):
         """交互模式"""
         self._refresh_history_completions()
-        completer = DynamicCompleter(
-            lambda: WordCompleter(self._history_completions, ignore_case=False)
+        session = PromptSession(
+            completer=self._create_interaction_completer(),
+            complete_while_typing=False,
         )
-        session = PromptSession(completer=completer, complete_while_typing=False)
 
         print("进入交互模式。直接键入词汇查询单词的含义；按 Tab 使用高频词补全。")
         self._print_interaction_help()
 
-        with patch_stdout():
-            while True:
-                try:
-                    inp = session.prompt("~ ").strip()
-                except KeyboardInterrupt:
-                    continue
-                except EOFError:
+        while True:
+            try:
+                inp = session.prompt(">>> ").strip()
+            except KeyboardInterrupt:
+                continue
+            except EOFError:
+                print("Bye!")
+                return
+
+            if inp.startswith(":"):
+                if inp == ":quit":
                     print("Bye!")
                     return
+                if inp == ":short":
+                    self._temp_config["short"] = True
+                    print("简明模式（例句将会被忽略）")
+                elif inp == ":long":
+                    self._temp_config["short"] = False
+                    print("完整模式（例句将会被显示）")
+                elif inp == ":help":
+                    self._print_interaction_help()
+                elif inp == ":history":
+                    word = self._select_history_word()
+                    if word and self.query(word):
+                        self._refresh_history_completions()
+                else:
+                    print("Bad Command!")
+                continue
 
-                if inp.startswith(":"):
-                    if inp == ":quit":
-                        print("Bye!")
-                        return
-                    if inp == ":short":
-                        self._temp_config["short"] = True
-                        print("简明模式（例句将会被忽略）")
-                    elif inp == ":long":
-                        self._temp_config["short"] = False
-                        print("完整模式（例句将会被显示）")
-                    elif inp == ":help":
-                        self._print_interaction_help()
-                    elif inp == ":history":
-                        word = self._select_history_word()
-                        if word and self.query(word):
-                            self._refresh_history_completions()
-                    else:
-                        print("Bad Command!")
-                    continue
+            if inp and self.query(inp):
+                self._refresh_history_completions()
 
-                if inp and self.query(inp):
-                    self._refresh_history_completions()
+    def _create_interaction_completer(self):
+        """创建命令与高频词共用的补全器。"""
+        command_completer = WordCompleter(
+            list(INTERACTION_COMMANDS),
+            WORD=True,
+            display_dict={command: command for command in INTERACTION_COMMANDS},
+            meta_dict=INTERACTION_COMMANDS,
+        )
+        history_completer = WordCompleter(
+            lambda: self._history_completions,
+            ignore_case=False,
+            sentence=True,
+        )
+        return merge_completers(
+            [command_completer, history_completer], deduplicate=True
+        )
 
     def _refresh_history_completions(self):
         """刷新交互输入框使用的前二十条高频查询。"""
@@ -287,31 +332,86 @@ class WudaoCLI:
         self._history_completions = [entry["word"] for entry in history]
 
     def _select_history_word(self) -> str | None:
-        """显示历史记录选择界面，并返回用户选中的词语。"""
+        """显示全屏历史记录选择界面，并返回用户选中的词语。"""
         history = self.client.get_query_history()  # type: ignore
         if not history:
             print("暂无查询历史。")
             return None
 
         values = [
-            (entry["word"], f"{entry['word']}  —  {entry['query_count']} 次")
+            (
+                entry["word"],
+                f"{entry['word']:<32} {entry['query_count']:>6} 次",
+            )
             for entry in history
         ]
-        return radiolist_dialog(
-            title="查询历史",
-            text="按查询次数排序；使用方向键选择，按 Enter 查询。",
+        history_list = RadioList(
             values=values,
-            ok_text="查询",
-            cancel_text="返回",
-        ).run()
+            open_character=" ",
+            select_character="●",
+            close_character=" ",
+        )
+        bindings = KeyBindings()
 
-    @staticmethod
-    def _print_interaction_help():
-        print(":help                    本帮助")
-        print(":history                 按查询次数查看历史记录")
-        print(":short                   切换简明模式")
-        print(":long                    切换完整模式")
-        print(":quit                    退出")
+        @bindings.add("enter", eager=True)
+        def select_word(event):
+            event.app.exit(result=history_list.current_value)
+
+        @bindings.add("escape", eager=True)
+        @bindings.add("c-c", eager=True)
+        def cancel_selection(event):
+            event.app.exit(result=None)
+
+        body = HSplit(
+            [
+                Label(
+                    "词语                              查询次数",
+                    style="class:history-heading",
+                ),
+                Window(height=1, char="─", style="class:history-subheading"),
+                history_list,
+            ],
+            padding=1,
+        )
+        root_container = HSplit(
+            [
+                Window(height=1),
+                Frame(body, title="查询历史", style="class:history-frame"),
+                Label(
+                    "  ↑↓ 选择   ·   Enter 查询   ·   Esc 返回  ",
+                    style="class:history-footer",
+                ),
+                Window(height=1),
+            ],
+            padding=1,
+        )
+        app = Application(
+            layout=Layout(root_container, focused_element=history_list),
+            key_bindings=bindings,
+            style=HISTORY_STYLE,
+            full_screen=True,
+            erase_when_done=True,
+        )
+        return app.run()
+
+    def _print_interaction_help(self):
+        """使用 Rich 输出带颜色的交互模式帮助。"""
+        command_table = Table.grid(padding=(0, 2))
+        command_table.add_column(style="bold cyan", no_wrap=True)
+        command_table.add_column(style="white")
+        for command, description in INTERACTION_COMMANDS.items():
+            command_table.add_row(command, description)
+
+        self.painter.console.print(
+            Panel(
+                command_table,
+                title="[bold bright_cyan]交互模式命令[/bold bright_cyan]",
+                subtitle="[dim]Tab 补全高频词与命令[/dim]",
+                border_style="bright_blue",
+                box=box.ROUNDED,
+            )
+        )
+        self.painter.console.print()
 
     def print_global_config(self):
         table = Table()
@@ -422,7 +522,7 @@ def create_parser():
         "-i",
         "--interactive",
         action="store_true",
-        help="进入交互模式（未经测试，可能会出现未知错误）",
+        help="进入带补全和查询历史的交互模式",
     )
     group.add_argument("-k", "--kill", action="store_true", help="退出服务进程")
     group.add_argument("--serve", action="store_true", help=argparse.SUPPRESS)

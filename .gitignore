@@ -112,5 +112,4 @@ main.py
 *.db
 test.py
 
-.vscode/
 .codex
