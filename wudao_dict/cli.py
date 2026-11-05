@@ -9,6 +9,10 @@ import json
 import os
 import sys
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import DynamicCompleter, WordCompleter
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.shortcuts import radiolist_dialog
 from rich import print
 from rich.table import Table
 
@@ -28,6 +32,7 @@ class WudaoCLI:
         self.conf = load_config()
         self.client: WudaoClient | None = None
         self._temp_config = {"short": False, "online": False}
+        self._history_completions: list[str] = []
 
     def run(self, args: argparse.Namespace):
         """
@@ -165,10 +170,6 @@ class WudaoCLI:
             self.client.close_server()  # type: ignore
             return
 
-        if args.interactive:
-            self.interaction_mode()
-            return
-
         # check the one time setting
         if args.short_once:
             self._temp_config["short"] = True
@@ -185,12 +186,16 @@ class WudaoCLI:
         else:
             self._temp_config["online"] = self.conf["online"]
 
+        if args.interactive:
+            self.interaction_mode()
+            return
+
         # 执行查询
         if args.word:
             word = " ".join(args.word)
             self.query(word)
 
-    def query(self, word: str):
+    def query(self, word: str) -> bool:
         """
         查询单词
 
@@ -224,6 +229,8 @@ class WudaoCLI:
         else:
             print("无法查询到相关释义")
 
+        return bool(word_info)
+
     def _trigger_pronunciation(self, word: str):
         if not self.conf["pronounce"] or not self.conf["pronounce_auto_play"]:
             return
@@ -232,48 +239,79 @@ class WudaoCLI:
 
     def interaction_mode(self):
         """交互模式"""
-        print(
-            "[red]无道词典增强版的交互模式未经测试，如果出现异常错误，请将错误信息反馈至:[red]"
+        self._refresh_history_completions()
+        completer = DynamicCompleter(
+            lambda: WordCompleter(self._history_completions, ignore_case=False)
         )
-        print("[red] https://github.com/Syize/Wudao-dict-plus/issues [red]")
-        print("进入交互模式。直接键入词汇查询单词的含义。下面提供了一些设置：")
-        print(":help                    本帮助")
-        # print(':note [filename]         设置生词本的名称')
-        print(":long                    切换完整模式(:short切换回去)")
+        session = PromptSession(completer=completer, complete_while_typing=False)
 
-        conf = {"save": True, "short": True, "notename": "notebook"}
-        while True:
-            try:
-                inp = input("~ ")
-            except EOFError:
-                sys.exit(0)
-            if inp.startswith(":"):
-                if inp == ":quit":
+        print("进入交互模式。直接键入词汇查询单词的含义；按 Tab 使用高频词补全。")
+        self._print_interaction_help()
+
+        with patch_stdout():
+            while True:
+                try:
+                    inp = session.prompt("~ ").strip()
+                except KeyboardInterrupt:
+                    continue
+                except EOFError:
                     print("Bye!")
-                    sys.exit(0)
-                elif inp == ":short":
-                    conf["short"] = True
-                    print("简明模式（例句将会被忽略）")
-                elif inp == ":long":
-                    conf["short"] = False
-                    print("完整模式（例句将会被显示）")
-                elif inp == ":help":
-                    print(":help                    本帮助")
-                    print(":quit                    退出")
-                    # print(':note [filename]         设置生词本的名称')
-                    print(":long                    切换完整模式(:short切换回去)")
-                elif inp.startswith(":note"):
-                    vec = inp.split()
-                    if len(vec) == 2 and vec[1]:
-                        conf["notename"] = vec[1]
-                        print(f"生词本指定为: ./usr/{vec[1]}.txt")
+                    return
+
+                if inp.startswith(":"):
+                    if inp == ":quit":
+                        print("Bye!")
+                        return
+                    if inp == ":short":
+                        self._temp_config["short"] = True
+                        print("简明模式（例句将会被忽略）")
+                    elif inp == ":long":
+                        self._temp_config["short"] = False
+                        print("完整模式（例句将会被显示）")
+                    elif inp == ":help":
+                        self._print_interaction_help()
+                    elif inp == ":history":
+                        word = self._select_history_word()
+                        if word and self.query(word):
+                            self._refresh_history_completions()
                     else:
-                        print("Bad notebook name!")
-                else:
-                    print("Bad Command!")
-                continue
-            if inp.strip():
-                self.query(inp.strip())
+                        print("Bad Command!")
+                    continue
+
+                if inp and self.query(inp):
+                    self._refresh_history_completions()
+
+    def _refresh_history_completions(self):
+        """刷新交互输入框使用的前二十条高频查询。"""
+        history = self.client.get_query_history(limit=20)  # type: ignore
+        self._history_completions = [entry["word"] for entry in history]
+
+    def _select_history_word(self) -> str | None:
+        """显示历史记录选择界面，并返回用户选中的词语。"""
+        history = self.client.get_query_history()  # type: ignore
+        if not history:
+            print("暂无查询历史。")
+            return None
+
+        values = [
+            (entry["word"], f"{entry['word']}  —  {entry['query_count']} 次")
+            for entry in history
+        ]
+        return radiolist_dialog(
+            title="查询历史",
+            text="按查询次数排序；使用方向键选择，按 Enter 查询。",
+            values=values,
+            ok_text="查询",
+            cancel_text="返回",
+        ).run()
+
+    @staticmethod
+    def _print_interaction_help():
+        print(":help                    本帮助")
+        print(":history                 按查询次数查看历史记录")
+        print(":short                   切换简明模式")
+        print(":long                    切换完整模式")
+        print(":quit                    退出")
 
     def print_global_config(self):
         table = Table()

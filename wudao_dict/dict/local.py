@@ -23,6 +23,7 @@ wudao_dict.dict.local
 import sqlite3
 from json import dumps, loads
 from os.path import exists
+from time import time_ns
 from typing import Literal
 
 from rich import print
@@ -47,6 +48,7 @@ class DictDBClient:
 
         self.db = sqlite3.connect(db_path)
         self.db_cur = self.db.cursor()
+        self._ensure_history_schema()
 
     def __enter__(self):
         return self
@@ -56,6 +58,57 @@ class DictDBClient:
 
     def close_db(self):
         self.db.close()
+
+    def _ensure_history_schema(self):
+        """创建查询历史所需的表和索引。"""
+        self.db_cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS query_history (
+                word TEXT PRIMARY KEY,
+                query_count INTEGER NOT NULL DEFAULT 0,
+                last_queried_at INTEGER NOT NULL
+            )
+            """
+        )
+        self.db_cur.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_query_history_rank
+            ON query_history (query_count DESC, last_queried_at DESC)
+            """
+        )
+        self.db.commit()
+
+    def record_query(self, word: str):
+        """记录一次成功的查询，并保留用户输入的大小写。"""
+        history_word = word.strip()
+        if not history_word:
+            return
+
+        self.db_cur.execute(
+            """
+            INSERT INTO query_history (word, query_count, last_queried_at)
+            VALUES (?, 1, ?)
+            ON CONFLICT(word) DO UPDATE SET
+                query_count = query_count + 1,
+                last_queried_at = excluded.last_queried_at
+            """,
+            (history_word, time_ns()),
+        )
+        self.db.commit()
+
+    def get_query_history(self, limit: int | None = None) -> list[tuple[str, int]]:
+        """获取按查询次数和最近查询时间排序的历史记录。"""
+        db_cmd = """
+            SELECT word, query_count
+            FROM query_history
+            ORDER BY query_count DESC, last_queried_at DESC, word ASC
+        """
+        values: tuple[int, ...] = ()
+        if limit is not None:
+            db_cmd += " LIMIT ?"
+            values = (limit,)
+
+        return self.db_cur.execute(db_cmd, values).fetchall()
 
     def query_word(self, table: Literal["en", "zh"], word: str) -> str:
         """查询词语的释义。

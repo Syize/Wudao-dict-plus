@@ -24,10 +24,13 @@ from .core import (
     LOG_FILE,
     PlaybackResponseMessage,
     PlayPronunciationMessage,
+    QueryHistoryEntry,
+    QueryHistoryMessage,
     QueryMessage,
     QuitMessage,
     read_socket,
 )
+from .core.interface import Message
 
 LOGGER = logging.getLogger("wudao-dict-client")
 
@@ -200,6 +203,20 @@ class WudaoClient:
             client.sendall(dumps(msg).encode("utf-8"))
             client.close()
 
+    def _send_request(self, message: Message) -> str:
+        """向服务端发送请求并读取完整响应。"""
+        client = self._create_request_client()
+        client.sendall(dumps(message).encode("utf-8"))
+
+        server_context = b""
+        while True:
+            rec = client.recv(512)
+            if not rec:
+                break
+            server_context += rec
+        client.close()
+        return server_context.decode("utf-8")
+
     def get_word_info(self, word: str, online=True, update_db=True) -> str:
         """
         查询单词信息。
@@ -215,31 +232,25 @@ class WudaoClient:
             "online": online,
             "update_db": update_db,
         }
-        client = self._create_request_client()
-        client.sendall(dumps(msg).encode("utf-8"))
+        return self._send_request(msg)
 
-        server_context = b""
-        while True:
-            rec = client.recv(512)
-            if not rec:
-                break
-            server_context += rec
-        client.close()
-        server_context = server_context.decode("utf-8")
-        return server_context
+    def get_query_history(self, limit: int | None = None) -> list[QueryHistoryEntry]:
+        """获取按查询次数排序的历史记录。"""
+        msg: QueryHistoryMessage = {"cmd": "query_history", "limit": limit}
+        server_context = self._send_request(msg)
+        if not server_context:
+            return []
+
+        response = loads(server_context)
+        if not isinstance(response, list):
+            LOGGER.warning("Received invalid query history response.")
+            return []
+
+        return response
 
     def play_pronunciation(self, word: str):
         msg: PlayPronunciationMessage = {"cmd": "play_pronunciation", "word": word}
-        client = self._create_request_client()
-        client.sendall(dumps(msg).encode("utf-8"))
-
-        server_context = b""
-        while True:
-            rec = client.recv(512)
-            if not rec:
-                break
-            server_context += rec
-        client.close()
+        server_context = self._send_request(msg)
 
         if not server_context:
             response: PlaybackResponseMessage = {
@@ -250,7 +261,7 @@ class WudaoClient:
             }
 
         else:
-            response = loads(server_context.decode("utf-8"))
+            response = loads(server_context)
 
         self._handle_playback_response(response)
 

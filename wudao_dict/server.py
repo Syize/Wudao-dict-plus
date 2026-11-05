@@ -25,6 +25,8 @@ from .core import (
     Message,
     PlaybackResponseMessage,
     PlayPronunciationMessage,
+    QueryHistoryEntry,
+    QueryHistoryMessage,
     QueryMessage,
     create_socket,
     delete_socket,
@@ -122,6 +124,9 @@ class WudaoServer:
 
                     elif msg_data["cmd"] == "query":
                         response = self._generate_msg(msg_data)
+
+                    elif msg_data["cmd"] == "query_history":
+                        response = self._get_query_history(msg_data)
 
                     elif msg_data["cmd"] == "play_pronunciation":
                         response = self._handle_play_pronunciation(msg_data)
@@ -233,6 +238,8 @@ class WudaoServer:
                 )
 
             self._prefetch_pronunciation_audio(word, lang_type, word_info)
+            if word_info:
+                self.local_dict.record_query(word)
 
             return word_info
 
@@ -240,6 +247,19 @@ class WudaoServer:
             self.logger.error(f"Unknow command: {msg_data['cmd']}")
 
             return ""
+
+    def _get_query_history(self, msg_data: QueryHistoryMessage) -> str:
+        """返回按查询频次排序的历史记录。"""
+        limit = msg_data["limit"]
+        if limit is not None and limit < 1:
+            self.logger.warning(f"Invalid history limit: {limit}")
+            return "[]"
+
+        entries: list[QueryHistoryEntry] = [
+            {"word": word, "query_count": count}
+            for word, count in self.local_dict.get_query_history(limit)
+        ]
+        return dumps(entries, ensure_ascii=False)
 
     def _prefetch_pronunciation_audio(
         self, word: str, lang_type: Literal["en", "zh"], word_info: str

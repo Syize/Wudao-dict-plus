@@ -69,6 +69,16 @@ class QueryMessage(TypedDict):
     update_db: bool
 
 
+class QueryHistoryMessage(TypedDict):
+    cmd: Literal["query_history"]
+    limit: int | None
+
+
+class QueryHistoryEntry(TypedDict):
+    word: str
+    query_count: int
+
+
 class PlayPronunciationMessage(TypedDict):
     cmd: Literal["play_pronunciation"]
     word: str
@@ -81,7 +91,7 @@ class PlaybackResponseMessage(TypedDict):
     message: str
 
 
-Message = QuitMessage | QueryMessage | PlayPronunciationMessage
+Message = QuitMessage | QueryMessage | QueryHistoryMessage | PlayPronunciationMessage
 
 
 __all__ = [
@@ -95,6 +105,8 @@ __all__ = [
     "PlaybackResponseMessage",
     "PronounceAccent",
     "PronunciationPlayStatus",
+    "QueryHistoryEntry",
+    "QueryHistoryMessage",
     "QueryMessage",
     "QuitMessage",
     "SentenceUnit",
