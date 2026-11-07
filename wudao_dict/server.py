@@ -32,7 +32,8 @@ from .core import (
     delete_socket,
     load_config,
 )
-from .dict import DictDBClient, search_youdao_en, search_youdao_zh
+from .core.db import LocalDictionaryRepository
+from .dict import search_youdao_en, search_youdao_zh
 from .utils import is_alphabet, set_log_file
 
 
@@ -72,7 +73,7 @@ class WudaoServer:
     """
 
     def __init__(self, address="127.0.0.1", is_foreground=False):
-        self.local_dict = DictDBClient()
+        self.local_dict = LocalDictionaryRepository()
         self.logger = logging.getLogger("wudao-dict")
         set_log_file(LOG_FILE)
 
@@ -168,8 +169,10 @@ class WudaoServer:
                 word_info = dumps(res)
 
                 if is_update_db and lang_type == "en":
-                    self.logger.info(f"Update DB: {res}")
-                    self.local_dict.insert_word("en", word_info)
+                    if self.local_dict.insert_word("en", word_info):
+                        self.logger.info(f"Update legacy DB: {res}")
+                    else:
+                        self.logger.info("Skip online result cache: legacy DB is unavailable")
 
             else:
                 word_info = ""

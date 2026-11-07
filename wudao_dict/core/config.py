@@ -54,7 +54,6 @@ wudao_dict.core.config
     delete_socket
 """
 
-import sys
 from json import dump, load
 from os import makedirs, remove
 from os.path import exists
@@ -75,7 +74,14 @@ LOG_FILE = f"{LOG_DIR}/log.txt"
 CACHE_DIR = user_cache_dir(appname=APP_NAME)
 AUDIO_CACHE_DIR = f"{CACHE_DIR}/audio"
 AUDIO_CACHE_INDEX_FILE = f"{AUDIO_CACHE_DIR}/audio_index.json"
-DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
+LEGACY_DICT_DB_FILE = f"{CONFIG_DIR}/dict.db"
+"""旧版词典数据库路径，仅用于兼容读取和在线结果缓存。"""
+
+WUDAO_DICT_DB_FILE = f"{CONFIG_DIR}/wudao_dict.db"
+"""新结构化词典数据库路径。"""
+
+# 保留旧名称，避免第三方直接导入该常量时立即失效。
+DICT_DB_FILE = LEGACY_DICT_DB_FILE
 CREDENCE_DB_FILE = f"{CONFIG_DIR}/credence.db"
 
 DEFAULT_CONFIG = {
@@ -180,16 +186,19 @@ def delete_socket():
         remove(CONFIG_SOCKET_FILE)
 
 
-def check_dict_db():
+def ensure_legacy_dict_db():
     """
-    检测本地词典数据库是否存在。若不存在，则解压数据库文件到配置目录。
+    确保旧版词典数据库存在。若不存在，则解压随包附带的旧数据库。
+
+    此函数不在模块导入时自动调用。新结构化词典存在时，不应为了兼容层而
+    额外解压旧数据库。
     """
-    if exists(DICT_DB_FILE):
+    if exists(LEGACY_DICT_DB_FILE):
         return
 
     if not exists(DICT_DB_ZST):
         print("[red]检测到无道词典不完整！请重新安装 wudao-dict-plus！[red]")
-        sys.exit(1)
+        raise FileNotFoundError("找不到随包附带的旧版词典数据库")
 
     print("[red]正在解压词典数据库。本操作理应只执行一次，请稍等...[red]")
 
@@ -198,11 +207,13 @@ def check_dict_db():
 
     decompressor = ZstdDecompressor()
 
-    with open(DICT_DB_ZST, "rb") as f, open(DICT_DB_FILE, "wb") as f2:
+    with open(DICT_DB_ZST, "rb") as f, open(LEGACY_DICT_DB_FILE, "wb") as f2:
         decompressor.copy_stream(f, f2)
 
 
-check_dict_db()
+def check_dict_db():
+    """兼容旧调用方的旧版词库初始化入口。"""
+    ensure_legacy_dict_db()
 
 
 __all__ = [
@@ -212,12 +223,16 @@ __all__ = [
     "CONFIG_DIR",
     "CONFIG_FILE",
     "CONFIG_SOCKET_FILE",
+    "CREDENCE_DB_FILE",
     "DICT_DB_FILE",
+    "LEGACY_DICT_DB_FILE",
     "LOG_DIR",
     "LOG_FILE",
+    "WUDAO_DICT_DB_FILE",
     "check_dict_db",
     "create_socket",
     "delete_socket",
+    "ensure_legacy_dict_db",
     "load_config",
     "read_socket",
     "save_config",

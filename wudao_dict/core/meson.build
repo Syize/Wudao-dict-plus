@@ -6,3 +6,5 @@ py3.install_sources(
     ],
     subdir: 'wudao_dict/core',
 )
+
+subdir('db')

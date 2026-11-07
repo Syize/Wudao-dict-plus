@@ -16,8 +16,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.layout import HSplit, Layout, Window
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import Frame, Label, RadioList
-from rich import print
-from rich import box
+from rich import box, print
 from rich.panel import Panel
 from rich.table import Table
 
@@ -26,7 +25,6 @@ from .core import CONFIG_FILE, load_config, save_config
 from .draw import CommandDraw
 from .server import WudaoServer, start_wudao_server
 from .utils import is_alphabet
-
 
 INTERACTION_COMMANDS = {
     ":help": "显示交互模式帮助",
