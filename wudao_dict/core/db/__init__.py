@@ -2,7 +2,7 @@
 
 from .legacy import LegacyDictionaryRepository
 from .repository import LocalDictionaryRepository
-from .schema import (
+from .schema.dict import (
     DictionaryEntry,
     DictionaryEntryDetail,
     DictionarySource,

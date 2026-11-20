@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 PronounceAccent = Literal["uk", "usa"]
 AudioPlayerBackend = Literal["", "afplay", "mpv", "ffplay", "paplay", "vlc"]
@@ -12,6 +12,7 @@ PronunciationPlayStatus = Literal[
     "vlc_path_invalid",
     "play_failed",
 ]
+WordRelationType = Literal["phrase_of", "redirect_to", "see_also", "variant_of"]
 
 
 class ENPronounce(TypedDict):
@@ -36,6 +37,19 @@ class ENSentence(TypedDict):
     sentences: list[CollinsSentenceUnit] | list[SentenceUnit]
 
 
+class WordRelation(TypedDict):
+    """Represent one related headword in a CLI dictionary result.
+
+    :param relation_type: Semantic relationship to the target headword.
+    :type relation_type: WordRelationType
+    :param target: Display text of the related headword.
+    :type target: str
+    """
+
+    relation_type: WordRelationType
+    target: str
+
+
 class ENWord(TypedDict):
     word: str
     pronunciation: ENPronounce
@@ -43,6 +57,7 @@ class ENWord(TypedDict):
     rank: str
     pattern: str
     sentence: ENSentence
+    relations: NotRequired[list[WordRelation]]
 
 
 class ZHDesc(TypedDict):
@@ -110,6 +125,8 @@ __all__ = [
     "QueryMessage",
     "QuitMessage",
     "SentenceUnit",
+    "WordRelation",
+    "WordRelationType",
     "ZHDesc",
     "ZHWord",
 ]

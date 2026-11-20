@@ -5,7 +5,7 @@ from json import dumps
 from typing import Literal
 
 from ..interface import ENPronounce, ENWord, SentenceUnit, ZHDesc, ZHWord
-from .schema import DictionaryEntryDetail, Example, Sense
+from .schema.dict import DictionaryEntryDetail, Example, Sense
 
 
 def details_to_legacy_json(

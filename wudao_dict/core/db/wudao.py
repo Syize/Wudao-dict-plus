@@ -5,7 +5,7 @@ from json import dumps, loads
 from os import makedirs
 from os.path import dirname, exists
 
-from .schema import (
+from .schema.dict import (
     DictionaryEntry,
     DictionaryEntryDetail,
     DictionarySource,
